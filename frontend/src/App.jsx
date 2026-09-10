@@ -140,6 +140,7 @@ export default function App() {
       processor.connect(audioContext.destination);
       setRecording(true);
     } catch (err) {
+      console.error('Microphone access failed:', err);
       alert('Microphone access denied or audio input device not found.');
     }
   };

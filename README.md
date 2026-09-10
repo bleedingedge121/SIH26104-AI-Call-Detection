@@ -365,21 +365,6 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 **AASIST Original License:** Copyright (c) 2021-present NAVER Corp. — MIT License
 
 ---
-
-## 🙏 Acknowledgements
-
-- **AASIST Authors:** Jung et al., NAVER Corp. — [Paper](https://arxiv.org/abs/2110.01200)
-- **ASVspoof Challenge** — Dataset and benchmarks
-- **RawNet2 Baseline** — [ASVspoof 2021 Baseline](https://github.com/asvspoof-challenge/2021/tree/main/LA/Baseline-RawNet2)
-- **RawGAT-ST** — [EURECOM Repository](https://github.com/eurecom-asp/RawGAT-ST-antispoofing)
-- **min t-DCF Implementation** — [ASVspoof Resources](https://www.asvspoof.org/resources/tDCF_python_v2.zip)
-
----
-
-## 📞 Support
-
-- **Issues:** [GitHub Issues](https://github.com/bleedingedge121/SIH26104-AI-Call-Detection/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/bleedingedge121/SIH26104-AI-Call-Detection/discussions)
 - **Email:** kavish.shrimal@mitb.ac.in
 
 ---

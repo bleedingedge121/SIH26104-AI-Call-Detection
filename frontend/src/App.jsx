@@ -1,20 +1,73 @@
-import React, { useState, useRef } from 'react';
-import { ShieldCheck, AlertTriangle, XOctagon, Activity, Mic, Square, UploadCloud, FileAudio, Monitor, Cpu, HardDrive, Zap, Radio } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  ShieldCheck,
+  AlertTriangle,
+  XOctagon,
+  Activity,
+  Mic,
+  Square,
+  UploadCloud,
+  FileAudio,
+  Cpu,
+  HardDrive,
+  RefreshCw,
+  Terminal,
+  PlayCircle,
+  Radio,
+  FileCheck
+} from 'lucide-react';
 
 export default function App() {
   const [file, setFile] = useState(null);
   const [recording, setRecording] = useState(false);
+  const [recordDuration, setRecordDuration] = useState(0);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
-  
+  const [backendOnline, setBackendOnline] = useState(true);
+
   const audioContextRef = useRef(null);
   const streamRef = useRef(null);
   const processorRef = useRef(null);
   const pcmBuffersRef = useRef([]);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    fetch('http://127.0.0.1:8000/health')
+      .then((res) => setBackendOnline(res.ok))
+      .catch(() => setBackendOnline(false));
+  }, []);
+
+  useEffect(() => {
+    if (recording) {
+      setRecordDuration(0);
+      timerRef.current = setInterval(() => {
+        setRecordDuration((prev) => prev + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [recording]);
 
   const handleFileChange = (e) => {
-    if (e.target.files[0]) {
+    if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
+      setResult(null);
+    }
+  };
+
+  const loadPresetSample = async (url, filename) => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Sample not found');
+      const blob = await res.blob();
+      const sampleFile = new File([blob], filename, { type: 'audio/wav' });
+      setFile(sampleFile);
+      setResult(null);
+    } catch (err) {
+      alert(`Could not load preset sample: ${err.message}`);
     }
   };
 
@@ -24,8 +77,10 @@ export default function App() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
-      
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)({
+        sampleRate: 16000,
+      });
       audioContextRef.current = audioContext;
 
       const source = audioContext.createMediaStreamSource(stream);
@@ -41,13 +96,13 @@ export default function App() {
       processor.connect(audioContext.destination);
       setRecording(true);
     } catch (err) {
-      alert('Microphone access denied or not supported by browser.');
+      alert('Microphone access denied or audio input device not found.');
     }
   };
 
   const stopRecording = () => {
     if (processorRef.current) processorRef.current.disconnect();
-    if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
+    if (streamRef.current) streamRef.current.getTracks().forEach((track) => track.stop());
     if (audioContextRef.current) audioContextRef.current.close();
 
     const samples = flattenBuffers(pcmBuffersRef.current);
@@ -60,23 +115,23 @@ export default function App() {
 
   const flattenBuffers = (buffers) => {
     let length = 0;
-    buffers.forEach(b => length += b.length);
-    const result = new Float32Array(length);
+    buffers.forEach((b) => (length += b.length));
+    const flat = new Float32Array(length);
     let offset = 0;
-    buffers.forEach(b => {
-      result.set(b, offset);
+    buffers.forEach((b) => {
+      flat.set(b, offset);
       offset += b.length;
     });
-    return result;
+    return flat;
   };
 
   const createWavBlob = (samples, sampleRate) => {
     const buffer = new ArrayBuffer(44 + samples.length * 2);
     const view = new DataView(buffer);
 
-    const writeString = (offset, string) => {
-      for (let i = 0; i < string.length; i++) {
-        view.setUint8(offset + i, string.charCodeAt(i));
+    const writeString = (offset, str) => {
+      for (let i = 0; i < str.length; i++) {
+        view.setUint8(offset + i, str.charCodeAt(i));
       }
     };
 
@@ -97,7 +152,7 @@ export default function App() {
     let offset = 44;
     for (let i = 0; i < samples.length; i++, offset += 2) {
       const s = Math.max(-1, Math.min(1, samples[i]));
-      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
     }
 
     return new Blob([buffer], { type: 'audio/wav' });
@@ -106,7 +161,7 @@ export default function App() {
   const analyzeAudio = async () => {
     if (!file) return;
     setLoading(true);
-    
+
     const formData = new FormData();
     formData.append('file', file);
 
@@ -115,229 +170,1000 @@ export default function App() {
         method: 'POST',
         body: formData,
       });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || `Server error (HTTP ${response.status})`);
+      }
+
       const data = await response.json();
       setResult(data);
+      setBackendOnline(true);
     } catch (error) {
-      alert('Error connecting to backend API. Make sure Uvicorn is running!');
+      alert(`Inference API Error: ${error.message}. Make sure the backend server is running on port 8000.`);
+      setBackendOnline(false);
     } finally {
       setLoading(false);
     }
   };
 
-  const customStyles = `
-    *, *::before, *::after { box-sizing: border-box; }
-    html, body, #root { margin: 0; padding: 0; width: 100%; min-height: 100vh; background-color: #030712; }
-    @keyframes pulse {
-      0% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-      50% { opacity: 0.85; transform: scale(0.99); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-      100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(12px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .glow-border {
-      border: 1px solid rgba(59, 130, 246, 0.3);
-      box-shadow: 0 0 25px rgba(59, 130, 246, 0.08), inset 0 0 15px rgba(59, 130, 246, 0.03);
-    }
-    .glow-border:hover {
-      border-color: rgba(59, 130, 246, 0.6);
-      box-shadow: 0 0 30px rgba(59, 130, 246, 0.2), inset 0 0 20px rgba(59, 130, 246, 0.06);
-    }
-    button:hover {
-      filter: brightness(1.2);
-      transform: translateY(-1px);
-      transition: all 0.2s ease;
-    }
-    .responsive-grid {
-      display: grid;
-      grid-template-columns: 400px 1fr;
-      gap: 24px;
-      width: 100%;
-      flex: 1;
-    }
-    @media (max-width: 968px) {
-      .responsive-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-  `;
+  const formatDuration = (sec) => {
+    const mins = Math.floor(sec / 60);
+    const remainder = sec % 60;
+    return `${mins.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}`;
+  };
 
   return (
-    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', width: '100%', minHeight: '100vh', backgroundColor: '#030712', color: '#f8fafc', padding: 'clamp(16px, 3vw, 32px)', margin: 0, display: 'flex', flexDirection: 'column', backgroundImage: 'radial-gradient(circle at 50% 0%, #1e1b4b 0%, #030712 70%)', boxSizing: 'border-box' }}>
-      <style>{customStyles}</style>
-      
-      {/* Top Header Bar */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '16px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '18px', marginBottom: '24px', width: '100%' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ background: 'linear-gradient(135deg, #3b82f6, #4f46e5)', padding: '14px', borderRadius: '14px', display: 'flex', boxShadow: '0 0 20px rgba(59, 130, 246, 0.4)', flexShrink: 0 }}>
-            <Activity color="#fff" size={28} />
+    <div style={styles.appContainer}>
+      {/* Header */}
+      <header style={styles.header}>
+        <div style={styles.brandGroup}>
+          <div style={styles.brandIcon}>
+            <Terminal size={18} color="#38bdf8" />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 'clamp(16px, 2vw, 22px)', fontWeight: '800', letterSpacing: '-0.025em', background: 'linear-gradient(90deg, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              AegisVoice AI • Biometric Anti-Spoofing Operations Center
-            </h1>
-            <p style={{ margin: '4px 0 0 0', fontSize: 'clamp(11px, 1.2vw, 13px)', color: '#94a3b8' }}>Smart India Hackathon 2026 • Problem Statement 104 • Advanced Neural Network & Spectral Deepfake Shield</p>
+            <div style={styles.brandTitleRow}>
+              <span style={styles.brandTitle}>AEGISVOICE</span>
+              <span style={styles.brandDivider}>|</span>
+              <span style={styles.brandSubtitle}>Voice Fraud & Call Deepfake Detection Console</span>
+            </div>
+            <div style={styles.brandMeta}>
+              Smart India Hackathon 2026 • Problem Statement 104 • Wav2Vec2 + Spectral Analysis
+            </div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(15, 23, 42, 0.8)', padding: '8px 16px', borderRadius: '30px', border: '1px solid rgba(52, 211, 153, 0.3)', fontSize: '13px', color: '#34d399', boxShadow: '0 0 15px rgba(52, 211, 153, 0.1)' }}>
-          <Radio size={16} />
-          <span>Telemetry Stream Active</span>
+
+        <div style={styles.systemStatus}>
+          <div
+            style={{
+              ...styles.statusIndicatorDot,
+              backgroundColor: backendOnline ? '#10b981' : '#ef4444',
+            }}
+          />
+          <span style={styles.statusLabel}>
+            SYSTEM: {backendOnline ? 'ONLINE' : 'BACKEND DISCONNECTED'}
+          </span>
         </div>
-      </div>
+      </header>
 
-      {/* Main Responsive Layout Grid */}
-      <div className="responsive-grid">
-        
-        {/* Left Control Panel */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
-          
-          <div className="glow-border" style={{ background: 'rgba(11, 17, 32, 0.75)', backdropFilter: 'blur(12px)', padding: '24px', borderRadius: '18px' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '700', color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              <Monitor size={16} color="#3b82f6" /> Capture Engine
-            </h3>
+      {/* Main Grid */}
+      <main style={styles.workspaceGrid}>
+        {/* Left Column: Controls */}
+        <section style={styles.columnLeft}>
+          <div style={styles.card}>
+            <h2 style={styles.cardHeading}>AUDIO INPUT</h2>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '18px' }}>
-              {!recording ? (
-                <button 
-                  onClick={startRecording}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)', width: '100%' }}
+            {/* Quick Test Audio Bench */}
+            <div style={styles.presetSection}>
+              <div style={styles.presetLabel}>QUICK TEST AUDIO</div>
+              <div style={styles.presetButtonGroup}>
+                <button
+                  type="button"
+                  onClick={() => loadPresetSample('/samples/sample_real.wav', 'sample_real.wav')}
+                  style={styles.presetButton}
                 >
-                  <Mic size={18} /> Record Live Speech Stream
+                  <PlayCircle size={14} color="#10b981" />
+                  <span>Authentic Voice</span>
                 </button>
-              ) : (
-                <button 
-                  onClick={stopRecording}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: '#334155', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '600', cursor: 'pointer', animation: 'pulse 1.5s infinite', width: '100%' }}
+                <button
+                  type="button"
+                  onClick={() => loadPresetSample('/samples/sample_spoof.wav', 'sample_spoof.wav')}
+                  style={styles.presetButton}
                 >
-                  <Square size={18} /> Stop Recording Buffer
+                  <PlayCircle size={14} color="#ef4444" />
+                  <span>Synthetic Clone</span>
                 </button>
-              )}
-
-              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '13px', background: 'rgba(30, 41, 59, 0.6)', color: '#f8fafc', border: '1px dashed rgba(100, 116, 139, 0.5)', borderRadius: '12px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', width: '100%', textAlign: 'center' }}>
-                <UploadCloud size={18} color="#38bdf8" /> Upload Audio Target (.wav)
-                <input type="file" accept="audio/*" onChange={handleFileChange} style={{ display: 'none' }} />
-              </label>
+              </div>
             </div>
 
+            {/* Upload Area & Recording Controls */}
+            <div style={styles.inputControls}>
+              <label style={styles.uploadArea}>
+                <UploadCloud size={24} color="#38bdf8" />
+                <div style={styles.uploadTextPrimary}>Upload Audio Recording</div>
+                <div style={styles.uploadTextSecondary}>Supports WAV, MP3, FLAC, OGG</div>
+                <input
+                  type="file"
+                  accept="audio/*,.wav,.mp3,.flac,.ogg,.m4a"
+                  onChange={handleFileChange}
+                  style={{ display: 'none' }}
+                />
+              </label>
+
+              {!recording ? (
+                <button type="button" onClick={startRecording} style={styles.micRecordButton}>
+                  <Mic size={16} color="#f1f5f9" />
+                  <span>Record from Microphone</span>
+                </button>
+              ) : (
+                <button type="button" onClick={stopRecording} style={styles.micStopButton}>
+                  <div style={styles.recordingPulseDot} />
+                  <Square size={14} color="#f87171" fill="#f87171" />
+                  <span>Stop Recording ({formatDuration(recordDuration)})</span>
+                </button>
+              )}
+            </div>
+
+            {/* Selected File Details */}
             {file && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#34d399', background: 'rgba(52, 211, 153, 0.08)', padding: '12px 14px', borderRadius: '10px', marginBottom: '18px', border: '1px solid rgba(52, 211, 153, 0.2)' }}>
-                <FileAudio size={16} /> 
-                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  Target: <strong>{file.name}</strong>
+              <div style={styles.fileCard}>
+                <FileAudio size={18} color="#38bdf8" style={{ flexShrink: 0 }} />
+                <div style={styles.fileCardContent}>
+                  <div style={styles.fileName}>{file.name}</div>
+                  <div style={styles.fileSize}>
+                    {(file.size / 1024).toFixed(1)} KB • {file.type || 'audio/wav'}
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFile(null);
+                    setResult(null);
+                  }}
+                  style={styles.clearFileButton}
+                  title="Remove target"
+                >
+                  ✕
+                </button>
               </div>
             )}
 
-            <button 
-              onClick={analyzeAudio} 
+            {/* Action CTA */}
+            <button
+              type="button"
+              onClick={analyzeAudio}
               disabled={!file || loading || recording}
-              style={{ width: '100%', padding: '14px', background: file && !recording ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'rgba(51, 65, 85, 0.5)', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '700', cursor: file && !recording ? 'pointer' : 'not-allowed', boxShadow: file && !recording ? '0 6px 20px rgba(59, 130, 246, 0.4)' : 'none', transition: 'all 0.2s' }}
+              style={{
+                ...styles.analyzeButton,
+                ...(!file || loading || recording ? styles.analyzeButtonDisabled : {}),
+              }}
             >
-              {loading ? 'Running Neural Inference...' : 'Execute Deepfake Security Scan'}
+              {loading ? (
+                <>
+                  <RefreshCw size={16} className="spin-icon" style={styles.spinAnimation} />
+                  <span>Analyzing Audio...</span>
+                </>
+              ) : (
+                <>
+                  <Activity size={16} />
+                  <span>ANALYZE AUDIO</span>
+                </>
+              )}
             </button>
           </div>
 
-          <div className="glow-border" style={{ background: 'rgba(11, 17, 32, 0.75)', backdropFilter: 'blur(12px)', padding: '20px', borderRadius: '18px' }}>
-            <h4 style={{ margin: '0 0 12px 0', fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>System Architecture Specs</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#cbd5e1' }}>
-                <Cpu size={15} color="#3b82f6" /> <span>Core Inference: PyTorch AASIST Backend</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#cbd5e1' }}>
-                <HardDrive size={15} color="#3b82f6" /> <span>Feature Extraction: Librosa (MFCC + Centroid)</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#cbd5e1' }}>
-                <Zap size={15} color="#3b82f6" /> <span>Interface: React + Vite Full-Width UI</span>
-              </div>
+          {/* System Specs */}
+          <div style={styles.cardMuted}>
+            <div style={styles.specsHeading}>SYSTEM ARCHITECTURE</div>
+            <div style={styles.specItem}>
+              <Cpu size={14} color="#64748b" />
+              <span>Model: Wav2Vec2 Audio Classifier</span>
+            </div>
+            <div style={styles.specItem}>
+              <HardDrive size={14} color="#64748b" />
+              <span>Sample Rate: 16,000 Hz Mono</span>
+            </div>
+            <div style={styles.specItem}>
+              <Activity size={14} color="#64748b" />
+              <span>Auxiliary: MFCC & Spectral Centroid Variance</span>
             </div>
           </div>
+        </section>
 
-        </div>
-
-        {/* Right Telemetry & Results Analytics View */}
-        <div className="glow-border" style={{ background: 'rgba(11, 17, 32, 0.75)', backdropFilter: 'blur(12px)', padding: 'clamp(20px, 3vw, 32px)', borderRadius: '18px', display: 'flex', flexDirection: 'column', justifyContent: result ? 'flex-start' : 'center', alignItems: result ? 'stretch' : 'center', width: '100%', minHeight: '350px' }}>
-          
+        {/* Right Column: Output */}
+        <section style={styles.columnRight}>
           {!result ? (
-            <div style={{ textAlign: 'center', color: '#64748b', maxWidth: '420px', margin: 'auto' }}>
-              <div style={{ background: 'rgba(59, 130, 246, 0.05)', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                <Activity size={36} color="#3b82f6" style={{ opacity: 0.6 }} />
+            <div style={styles.emptyStateCard}>
+              <div style={styles.emptyIconBox}>
+                <Radio size={32} color="#64748b" />
               </div>
-              <h3 style={{ margin: '0 0 8px 0', color: '#cbd5e1', fontSize: '18px', fontWeight: '600' }}>Awaiting Telemetry Input Stream</h3>
-              <p style={{ margin: 0, fontSize: '13px', lineHeight: '1.5' }}>Upload an audio sample or execute live speech recording on the left panel to initialize model evaluation and acoustic variance tracking.</p>
+              <h3 style={styles.emptyTitle}>Ready for Analysis</h3>
+              <p style={styles.emptyText}>
+                Select a test sample on the left, upload an audio file, or record speech through your microphone to generate a deepfake risk assessment.
+              </p>
+              <div style={styles.emptyWorkflow}>
+                <div style={styles.workflowStep}>
+                  <span style={styles.workflowIndex}>1</span>
+                  <span>Select or upload audio clip</span>
+                </div>
+                <div style={styles.workflowStep}>
+                  <span style={styles.workflowIndex}>2</span>
+                  <span>Click Analyze Audio</span>
+                </div>
+                <div style={styles.workflowStep}>
+                  <span style={styles.workflowIndex}>3</span>
+                  <span>Review classification, risk score, and spectral metrics</span>
+                </div>
+              </div>
             </div>
           ) : (
-            <div style={{ animation: 'fadeIn 0.35s ease-in-out', width: '100%' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '16px', marginBottom: '24px' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Activity size={20} color="#38bdf8" /> Threat Analysis Telemetry Report
-                </h3>
-                <span style={{ fontSize: '12px', background: 'rgba(59, 130, 246, 0.1)', color: '#38bdf8', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                  ID: {Math.random().toString(36).substring(2, 9).toUpperCase()}
-                </span>
-              </div>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '24px' }}>
-                <div style={{ background: 'rgba(3, 7, 18, 0.6)', padding: '18px', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                  <p style={{ margin: '0 0 6px 0', fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Target Audio File</p>
-                  <p style={{ margin: 0, fontWeight: '600', fontSize: '15px', color: '#f8fafc', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{result.filename}</p>
-                </div>
-                <div style={{ background: 'rgba(3, 7, 18, 0.6)', padding: '18px', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                  <p style={{ margin: '0 0 6px 0', fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Computed Risk Score</p>
-                  <p style={{ margin: 0, fontSize: '24px', fontWeight: '800', color: result.risk_score > 40 ? '#f59e0b' : '#10b981' }}>
-                    {result.risk_score} <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 'normal' }}>/ 100</span>
-                  </p>
-                </div>
-              </div>
-              
-              <div style={{ 
-                padding: '18px 22px', 
-                borderRadius: '14px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '16px',
-                color: '#fff',
-                fontWeight: '600',
-                backgroundColor: result.status === 'SAFE' ? 'rgba(16, 185, 129, 0.12)' : result.status === 'SUSPICIOUS' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                border: `1px solid ${result.status === 'SAFE' ? '#10b981' : result.status === 'SUSPICIOUS' ? '#f59e0b' : '#ef4444'}`,
-                marginBottom: '24px',
-                boxShadow: `0 0 20px ${result.status === 'SAFE' ? 'rgba(16, 185, 129, 0.1)' : result.status === 'SUSPICIOUS' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)'}`
-              }}>
-                {result.status === 'SAFE' && <ShieldCheck color="#10b981" size={28} />}
-                {(result.status === 'SUSPICIOUS' || result.status === 'SUSPICIONS') && <AlertTriangle color="#f59e0b" size={28} />}
-                {result.status === 'CRITICAL' && <XOctagon color="#ef4444" size={28} />}
-                <div>
-                  <div style={{ fontSize: '11px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: '700' }}>Classification Verdict</div>
-                  <div style={{ fontSize: '18px', fontWeight: '800', color: result.status === 'SAFE' ? '#34d399' : result.status === 'SUSPICIOUS' ? '#fbbf24' : '#f87171' }}>
-                    {result.status}
+            <div style={styles.resultsContainer}>
+              {/* Verdict Banner */}
+              <div
+                style={{
+                  ...styles.verdictBanner,
+                  borderColor:
+                    result.status === 'SAFE'
+                      ? '#10b981'
+                      : result.status === 'SUSPICIOUS'
+                      ? '#f59e0b'
+                      : '#ef4444',
+                  backgroundColor:
+                    result.status === 'SAFE'
+                      ? 'rgba(16, 185, 129, 0.08)'
+                      : result.status === 'SUSPICIOUS'
+                      ? 'rgba(245, 158, 11, 0.08)'
+                      : 'rgba(239, 68, 68, 0.08)',
+                }}
+              >
+                <div style={styles.verdictLeft}>
+                  {result.status === 'SAFE' && <ShieldCheck size={36} color="#10b981" />}
+                  {result.status === 'SUSPICIOUS' && <AlertTriangle size={36} color="#f59e0b" />}
+                  {result.status === 'CRITICAL' && <XOctagon size={36} color="#ef4444" />}
+
+                  <div>
+                    <div style={styles.verdictSubtext}>AUTHENTICITY CLASSIFICATION</div>
+                    <div
+                      style={{
+                        ...styles.verdictTitle,
+                        color:
+                          result.status === 'SAFE'
+                            ? '#10b981'
+                            : result.status === 'SUSPICIOUS'
+                            ? '#f59e0b'
+                            : '#ef4444',
+                      }}
+                    >
+                      {result.status === 'SAFE' && 'AUTHENTIC HUMAN SPEECH'}
+                      {result.status === 'SUSPICIOUS' && 'SUSPICIOUS VOICE ANOMALIES'}
+                      {result.status === 'CRITICAL' && 'SYNTHETIC / CLONED VOICE DETECTED'}
+                    </div>
                   </div>
+                </div>
+
+                <div style={styles.verdictBadge}>
+                  <span style={styles.verdictBadgeLabel}>STATUS</span>
+                  <span
+                    style={{
+                      ...styles.verdictBadgeValue,
+                      color:
+                        result.status === 'SAFE'
+                          ? '#10b981'
+                          : result.status === 'SUSPICIOUS'
+                          ? '#f59e0b'
+                          : '#ef4444',
+                    }}
+                  >
+                    {result.status}
+                  </span>
                 </div>
               </div>
 
-              {result.spectral_analysis && (
-                <div style={{ background: 'rgba(3, 7, 18, 0.6)', padding: '20px', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.06)', marginBottom: '24px' }}>
-                  <h4 style={{ margin: '0 0 14px 0', fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Acoustic Spectral Variance Matrix</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px' }}>
-                    <div>
-                      <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#64748b' }}>MFCC Variance</p>
-                      <p style={{ margin: 0, fontSize: '17px', fontWeight: '700', fontFamily: 'monospace', color: '#38bdf8' }}>{result.spectral_analysis.mfcc_variance}</p>
+              {/* Risk Score */}
+              <div style={styles.card}>
+                <div style={styles.scoreMeterHeader}>
+                  <div>
+                    <span style={styles.metricLabel}>COMPUTED RISK SCORE</span>
+                    <div style={styles.scoreValueRow}>
+                      <span
+                        style={{
+                          ...styles.scoreNumber,
+                          color:
+                            result.risk_score > 70
+                              ? '#ef4444'
+                              : result.risk_score > 40
+                              ? '#f59e0b'
+                              : '#10b981',
+                        }}
+                      >
+                        {result.risk_score}
+                      </span>
+                      <span style={styles.scoreScale}>/ 100</span>
                     </div>
-                    <div>
-                      <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#64748b' }}>Centroid Variance</p>
-                      <p style={{ margin: 0, fontSize: '17px', fontWeight: '700', fontFamily: 'monospace', color: '#38bdf8' }}>{result.spectral_analysis.centroid_variance}</p>
+                  </div>
+
+                  <div style={styles.scoreThresholds}>
+                    <div style={styles.thresholdItem}>
+                      <span style={{ color: '#10b981' }}>●</span> Low Risk: ≤40
+                    </div>
+                    <div style={styles.thresholdItem}>
+                      <span style={{ color: '#f59e0b' }}>●</span> Suspicious: 41-70
+                    </div>
+                    <div style={styles.thresholdItem}>
+                      <span style={{ color: '#ef4444' }}>●</span> High Risk: &gt;70
+                    </div>
+                  </div>
+                </div>
+
+                <div style={styles.gaugeTrack}>
+                  <div
+                    style={{
+                      ...styles.gaugeFill,
+                      width: `${Math.min(100, Math.max(0, result.risk_score))}%`,
+                      backgroundColor:
+                        result.risk_score > 70
+                          ? '#ef4444'
+                          : result.risk_score > 40
+                          ? '#f59e0b'
+                          : '#10b981',
+                    }}
+                  />
+                  <div style={{ ...styles.gaugeMarker, left: '40%' }} title="Threshold: 40" />
+                  <div style={{ ...styles.gaugeMarker, left: '70%' }} title="Threshold: 70" />
+                </div>
+              </div>
+
+              {/* Metrics Grid */}
+              <div style={styles.metricGrid}>
+                <div style={styles.metricCard}>
+                  <span style={styles.metricCardLabel}>MODEL PREDICTION</span>
+                  <div style={styles.metricCardValue}>
+                    {result.model_prediction ? result.model_prediction.toUpperCase() : (result.status === 'SAFE' ? 'REAL' : 'FAKE')}
+                  </div>
+                  <div style={styles.metricCardHint}>Neural Classifier</div>
+                </div>
+
+                <div style={styles.metricCard}>
+                  <span style={styles.metricCardLabel}>CONFIDENCE</span>
+                  <div style={styles.metricCardValue}>
+                    {result.model_confidence ? `${(result.model_confidence * 100).toFixed(1)}%` : '100.0%'}
+                  </div>
+                  <div style={styles.metricCardHint}>Posterior Probability</div>
+                </div>
+
+                <div style={styles.metricCard}>
+                  <span style={styles.metricCardLabel}>SYNTHETIC PROBABILITY</span>
+                  <div style={{ ...styles.metricCardValue, color: '#ef4444' }}>
+                    {result.fake_probability !== undefined ? `${(result.fake_probability * 100).toFixed(1)}%` : `${result.risk_score}%`}
+                  </div>
+                  <div style={styles.metricCardHint}>Spoof Indicator</div>
+                </div>
+
+                <div style={styles.metricCard}>
+                  <span style={styles.metricCardLabel}>AUTHENTIC PROBABILITY</span>
+                  <div style={{ ...styles.metricCardValue, color: '#10b981' }}>
+                    {result.real_probability !== undefined ? `${(result.real_probability * 100).toFixed(1)}%` : `${(100 - result.risk_score).toFixed(1)}%`}
+                  </div>
+                  <div style={styles.metricCardHint}>Human Speech Indicator</div>
+                </div>
+              </div>
+
+              {/* Security Directive */}
+              <div style={styles.directiveCard}>
+                <div style={styles.directiveHeader}>
+                  <FileCheck size={16} color="#38bdf8" />
+                  <span style={styles.directiveTitle}>SECURITY DIRECTIVE</span>
+                </div>
+                <div style={styles.directiveBody}>{result.recommendation}</div>
+                <div style={styles.directiveSubtext}>
+                  {result.status === 'SAFE'
+                    ? 'Caller voice characteristics match natural human organic acoustics. Standard transaction protocol authorized.'
+                    : 'Flagged by voice authenticity shield. Do not disclose OTPs or permit account recovery without secondary out-of-band verification.'}
+                </div>
+              </div>
+
+              {/* Acoustic Spectral Analysis */}
+              {result.spectral_analysis && (
+                <div style={styles.card}>
+                  <div style={styles.evidenceHeader}>
+                    <Activity size={15} color="#94a3b8" />
+                    <span style={styles.evidenceTitle}>ACOUSTIC SPECTRAL EVIDENCE</span>
+                  </div>
+                  <div style={styles.spectralGrid}>
+                    <div style={styles.spectralItem}>
+                      <span style={styles.spectralItemLabel}>MFCC VARIANCE</span>
+                      <span style={styles.spectralItemValue}>{result.spectral_analysis.mfcc_variance}</span>
+                      <span style={styles.spectralItemNote}>
+                        Measures timbre variance across time frames.
+                      </span>
+                    </div>
+
+                    <div style={styles.spectralItem}>
+                      <span style={styles.spectralItemLabel}>SPECTRAL CENTROID VARIANCE</span>
+                      <span style={styles.spectralItemValue}>{result.spectral_analysis.centroid_variance}</span>
+                      <span style={styles.spectralItemNote}>
+                        Measures frequency distribution center of mass movement.
+                      </span>
                     </div>
                   </div>
                 </div>
               )}
 
-              <div style={{ fontSize: '14px', color: '#e2e8f0', background: 'rgba(3, 7, 18, 0.6)', padding: '18px 22px', borderRadius: '14px', borderLeft: '4px solid #3b82f6', border: '1px solid rgba(255, 255, 255, 0.06)', lineHeight: '1.5' }}>
-                <strong style={{ color: '#38bdf8', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.05em' }}>Operational Countermeasure Directive:</strong> 
-                {result.recommendation}
+              {/* Audit Footer */}
+              <div style={styles.auditBar}>
+                <span>FILE: <code>{result.filename}</code></span>
+                <span>CHANNELS: <code>MONO (16 kHz)</code></span>
+                <span>HTTP: <code>200 OK</code></span>
               </div>
             </div>
           )}
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
 }
+
+const styles = {
+  appContainer: {
+    width: '100%',
+    minHeight: '100vh',
+    backgroundColor: '#0c1017',
+    color: '#f1f5f9',
+    display: 'flex',
+    flexDirection: 'column',
+    boxSizing: 'border-box',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  },
+  header: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '16px 28px',
+    borderBottom: '1px solid #1e293b',
+    backgroundColor: '#0f141d',
+    gap: '16px',
+  },
+  brandGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '14px',
+  },
+  brandIcon: {
+    backgroundColor: '#162235',
+    border: '1px solid #253654',
+    borderRadius: '8px',
+    padding: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandTitleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    flexWrap: 'wrap',
+  },
+  brandTitle: {
+    fontSize: '17px',
+    fontWeight: '800',
+    letterSpacing: '0.05em',
+    color: '#f8fafc',
+  },
+  brandDivider: {
+    color: '#475569',
+  },
+  brandSubtitle: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#94a3b8',
+  },
+  brandMeta: {
+    fontSize: '12px',
+    color: '#64748b',
+    marginTop: '2px',
+  },
+  systemStatus: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '6px 14px',
+    backgroundColor: '#131b27',
+    border: '1px solid #1e293b',
+    borderRadius: '20px',
+  },
+  statusIndicatorDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+  },
+  statusLabel: {
+    fontSize: '12px',
+    fontWeight: '600',
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+    color: '#cbd5e1',
+  },
+  workspaceGrid: {
+    display: 'grid',
+    gridTemplateColumns: '380px 1fr',
+    gap: '24px',
+    padding: '28px',
+    flex: 1,
+    maxWidth: '1600px',
+    width: '100%',
+    margin: '0 auto',
+    boxSizing: 'border-box',
+  },
+  columnLeft: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
+  },
+  columnRight: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  card: {
+    backgroundColor: '#111722',
+    border: '1px solid #1e293b',
+    borderRadius: '10px',
+    padding: '22px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '18px',
+  },
+  cardMuted: {
+    backgroundColor: '#0f141d',
+    border: '1px solid #1b2433',
+    borderRadius: '10px',
+    padding: '18px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  cardHeading: {
+    margin: 0,
+    fontSize: '14px',
+    fontWeight: '700',
+    letterSpacing: '0.06em',
+    color: '#e2e8f0',
+  },
+  presetSection: {
+    backgroundColor: '#0c1017',
+    border: '1px solid #1a2333',
+    borderRadius: '8px',
+    padding: '12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  presetLabel: {
+    fontSize: '10px',
+    fontWeight: '700',
+    letterSpacing: '0.06em',
+    color: '#64748b',
+  },
+  presetButtonGroup: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '8px',
+  },
+  presetButton: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    backgroundColor: '#131b27',
+    border: '1px solid #243248',
+    color: '#e2e8f0',
+    padding: '8px 10px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
+  inputControls: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  uploadArea: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    padding: '24px 16px',
+    border: '1px dashed #334155',
+    borderRadius: '8px',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    cursor: 'pointer',
+    textAlign: 'center',
+  },
+  uploadTextPrimary: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#f1f5f9',
+  },
+  uploadTextSecondary: {
+    fontSize: '11px',
+    color: '#64748b',
+  },
+  micRecordButton: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '10px',
+    padding: '12px',
+    backgroundColor: '#1e293b',
+    border: '1px solid #334155',
+    borderRadius: '8px',
+    color: '#f8fafc',
+    fontSize: '13px',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
+  micStopButton: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '10px',
+    padding: '12px',
+    backgroundColor: '#450a0a',
+    border: '1px solid #991b1b',
+    borderRadius: '8px',
+    color: '#fca5a5',
+    fontSize: '13px',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
+  recordingPulseDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    backgroundColor: '#ef4444',
+  },
+  fileCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '10px 12px',
+    backgroundColor: '#131d2b',
+    border: '1px solid #1e3a5f',
+    borderRadius: '6px',
+  },
+  fileCardContent: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  fileName: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#f1f5f9',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  fileSize: {
+    fontSize: '11px',
+    color: '#64748b',
+    marginTop: '2px',
+  },
+  clearFileButton: {
+    background: 'none',
+    border: 'none',
+    color: '#94a3b8',
+    cursor: 'pointer',
+    padding: '4px',
+  },
+  analyzeButton: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    padding: '14px',
+    backgroundColor: '#0284c7',
+    border: 'none',
+    borderRadius: '8px',
+    color: '#ffffff',
+    fontSize: '14px',
+    fontWeight: '700',
+    letterSpacing: '0.04em',
+    cursor: 'pointer',
+  },
+  analyzeButtonDisabled: {
+    backgroundColor: '#1e293b',
+    color: '#64748b',
+    cursor: 'not-allowed',
+  },
+  specsHeading: {
+    fontSize: '11px',
+    fontWeight: '700',
+    letterSpacing: '0.07em',
+    color: '#64748b',
+  },
+  specItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '12px',
+    color: '#94a3b8',
+  },
+  emptyStateCard: {
+    backgroundColor: '#111722',
+    border: '1px solid #1e293b',
+    borderRadius: '10px',
+    padding: '64px 32px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    flex: 1,
+  },
+  emptyIconBox: {
+    width: '64px',
+    height: '64px',
+    borderRadius: '50%',
+    backgroundColor: '#16202e',
+    border: '1px solid #202d42',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '16px',
+  },
+  emptyTitle: {
+    margin: '0 0 8px 0',
+    fontSize: '18px',
+    fontWeight: '700',
+    color: '#e2e8f0',
+  },
+  emptyText: {
+    margin: '0 0 28px 0',
+    fontSize: '13px',
+    color: '#64748b',
+    maxWidth: '460px',
+    lineHeight: '1.5',
+  },
+  emptyWorkflow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    textAlign: 'left',
+    width: '100%',
+    maxWidth: '380px',
+  },
+  workflowStep: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '10px 14px',
+    backgroundColor: '#0c1017',
+    border: '1px solid #1b2638',
+    borderRadius: '6px',
+    fontSize: '13px',
+    color: '#cbd5e1',
+  },
+  workflowIndex: {
+    fontSize: '11px',
+    fontWeight: '800',
+    color: '#38bdf8',
+    backgroundColor: '#162338',
+    width: '20px',
+    height: '20px',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resultsContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '18px',
+  },
+  verdictBanner: {
+    padding: '18px 24px',
+    borderRadius: '10px',
+    border: '1px solid',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '16px',
+    flexWrap: 'wrap',
+  },
+  verdictLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+  },
+  verdictSubtext: {
+    fontSize: '11px',
+    fontWeight: '700',
+    letterSpacing: '0.08em',
+    color: '#94a3b8',
+  },
+  verdictTitle: {
+    fontSize: '20px',
+    fontWeight: '800',
+    letterSpacing: '0.02em',
+    marginTop: '2px',
+  },
+  verdictBadge: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+  },
+  verdictBadgeLabel: {
+    fontSize: '10px',
+    fontWeight: '700',
+    color: '#64748b',
+    letterSpacing: '0.06em',
+  },
+  verdictBadgeValue: {
+    fontSize: '18px',
+    fontWeight: '800',
+    fontFamily: 'ui-monospace, monospace',
+  },
+  scoreMeterHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    gap: '12px',
+  },
+  metricLabel: {
+    fontSize: '11px',
+    fontWeight: '700',
+    letterSpacing: '0.06em',
+    color: '#64748b',
+  },
+  scoreValueRow: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '6px',
+    marginTop: '4px',
+  },
+  scoreNumber: {
+    fontSize: '36px',
+    fontWeight: '800',
+    fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+    lineHeight: '1',
+  },
+  scoreScale: {
+    fontSize: '14px',
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  scoreThresholds: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    fontSize: '11px',
+    color: '#94a3b8',
+    fontFamily: 'ui-monospace, monospace',
+  },
+  thresholdItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  gaugeTrack: {
+    width: '100%',
+    height: '10px',
+    backgroundColor: '#1b2433',
+    borderRadius: '5px',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  gaugeFill: {
+    height: '100%',
+    borderRadius: '5px',
+    transition: 'width 0.4s ease',
+  },
+  gaugeMarker: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: '2px',
+    backgroundColor: '#334155',
+  },
+  metricGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+    gap: '12px',
+  },
+  metricCard: {
+    backgroundColor: '#111722',
+    border: '1px solid #1e293b',
+    borderRadius: '8px',
+    padding: '14px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  metricCardLabel: {
+    fontSize: '10px',
+    fontWeight: '700',
+    letterSpacing: '0.06em',
+    color: '#64748b',
+  },
+  metricCardValue: {
+    fontSize: '20px',
+    fontWeight: '800',
+    fontFamily: 'ui-monospace, monospace',
+    color: '#f8fafc',
+  },
+  metricCardHint: {
+    fontSize: '10px',
+    color: '#64748b',
+  },
+  directiveCard: {
+    backgroundColor: '#101926',
+    border: '1px solid #1e3a5f',
+    borderRadius: '8px',
+    padding: '16px 20px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  directiveHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  directiveTitle: {
+    fontSize: '11px',
+    fontWeight: '700',
+    letterSpacing: '0.07em',
+    color: '#38bdf8',
+  },
+  directiveBody: {
+    fontSize: '15px',
+    fontWeight: '700',
+    color: '#f1f5f9',
+    marginTop: '2px',
+  },
+  directiveSubtext: {
+    fontSize: '12px',
+    color: '#94a3b8',
+    lineHeight: '1.4',
+  },
+  evidenceHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  evidenceTitle: {
+    fontSize: '11px',
+    fontWeight: '700',
+    letterSpacing: '0.06em',
+    color: '#94a3b8',
+  },
+  spectralGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '16px',
+  },
+  spectralItem: {
+    backgroundColor: '#0c1017',
+    border: '1px solid #1c2638',
+    borderRadius: '6px',
+    padding: '14px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  spectralItemLabel: {
+    fontSize: '10px',
+    fontWeight: '700',
+    letterSpacing: '0.05em',
+    color: '#64748b',
+  },
+  spectralItemValue: {
+    fontSize: '22px',
+    fontWeight: '800',
+    fontFamily: 'ui-monospace, monospace',
+    color: '#38bdf8',
+  },
+  spectralItemNote: {
+    fontSize: '11px',
+    color: '#64748b',
+    lineHeight: '1.4',
+  },
+  auditBar: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    padding: '10px 14px',
+    backgroundColor: '#0c1017',
+    border: '1px solid #1a2434',
+    borderRadius: '6px',
+    fontSize: '11px',
+    color: '#64748b',
+    fontFamily: 'ui-monospace, monospace',
+    gap: '10px',
+  },
+  spinAnimation: {
+    animation: 'spin 1s linear infinite',
+  },
+};

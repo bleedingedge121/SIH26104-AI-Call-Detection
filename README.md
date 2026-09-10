@@ -1,10 +1,32 @@
 # SIH26104-AI-Call-Detection
 
 > **Smart India Hackathon 2026 • Problem Statement 104**  
-> **Advanced Neural Network & Spectral Deepfake Shield**  
-> **AegisVoice AI — Biometric Anti-Spoofing Operations Center**
+> **Advanced Neural & Spectral Deepfake Detection System**  
+> **AegisVoice AI — Biometric Anti-Spoofing & Call Defense Console**
 
-A full-stack AI-powered voice anti-spoofing system combining the **AASIST (Audio Anti-Spoofing using Integrated Spectro-Temporal Graph Attention Networks)** backend with a modern **React + Vite** frontend for real-time deepfake audio detection.
+A full-stack, real-time voice anti-spoofing and deepfake call defense system. AegisVoice pairs a **fine-tuned Wav2Vec2 neural speech classification pipeline** with **multi-window temporal scanning** and **signal-level acoustic telemetry (MFCC & Spectral Centroid Variance)**, connected to an industrial cybersecurity console built with **React + Vite**.
+
+---
+
+## ⚡ 1-Click Launch
+
+Clone and start the complete application (both Backend API and Frontend Console) in a single command:
+
+### Windows:
+```cmd
+start_demo.bat
+```
+*(Automatically verifies Python virtual environment, installs missing dependencies, starts the FastAPI server, boots Vite, and opens the console).*
+
+### macOS / Linux:
+```bash
+chmod +x start_demo.sh
+./start_demo.sh
+```
+
+- **Frontend Console:** [http://localhost:5173](http://localhost:5173)  
+- **Backend Swagger API:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)  
+- **Health Endpoint:** [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
 
 ---
 
@@ -12,205 +34,183 @@ A full-stack AI-powered voice anti-spoofing system combining the **AASIST (Audio
 
 ```
 SIH26104-AI-Call-Detection/
-├── .gitignore                          # Root gitignore (Python + Node + OS)
-├── README.md                           # This file
+├── start_demo.bat                      # 1-Click launcher for Windows
+├── start_demo.sh                       # 1-Click launcher for macOS / Linux
+├── .gitignore                          # Root gitignore
+├── README.md                           # Documentation & architecture guide
 ├── LICENSE                             # MIT License
 │
-├── backend/                            # Python FastAPI Backend (AASIST)
-│   ├── .gitignore                      # Python-specific ignores
-│   ├── app.py                          # FastAPI server with /score endpoint
-│   ├── main.py                         # AASIST training/evaluation entry point
-│   ├── requirements.txt                # Python dependencies
-│   ├── config/                         # Model configuration files
-│   │   ├── AASIST.conf                 # AASIST model config
-│   │   ├── AASIST-L.conf               # AASIST-Light config
-│   │   ├── RawNet2_baseline.conf       # RawNet2 baseline config
-│   │   └── RawGATST_baseline.conf      # RawGAT-ST baseline config
-│   ├── models/                         # Model architectures
-│   │   ├── AASIST.py                   # AASIST Graph Attention Network
-│   │   ├── RawNet2Spoof.py             # RawNet2 anti-spoofing model
-│   │   └── RawNetGatSpoofST.py         # RawGAT-ST model
-│   ├── models/weights/                 # Pre-trained model weights (Git LFS recommended)
-│   │   ├── AASIST.pth                  # AASIST pre-trained weights
-│   │   └── AASIST-L.pth                # AASIST-Light pre-trained weights
-│   ├── data_utils.py                   # Data loading utilities
-│   ├── evaluation.py                   # Evaluation metrics (EER, min t-DCF)
-│   ├── infer.py                        # Inference utilities
-│   ├── utils.py                        # Helper functions
-│   ├── download_dataset.py             # ASVspoof 2019 dataset downloader
-│   ├── sample.wav                      # Sample audio for testing
-│   └── sample2.wav                     # Additional sample audio
+├── backend/                            # Python FastAPI Backend
+│   ├── app.py                          # FastAPI production server with /score and /health
+│   ├── infer.py                        # Standalone CLI inference tool
+│   ├── test_api.py                     # Automated integration test suite (5 tests)
+│   ├── verify_live_api.py              # Live end-to-end benchmark dataset verification suite
+│   ├── requirements.txt                # Python dependencies (PyTorch, Transformers, Librosa)
+│   ├── sample.wav                      # Bundled synthetic clone audio benchmark
+│   ├── sample2.wav                     # Bundled authentic speech audio benchmark
+│   ├── demo_samples/                   # Reference benchmark samples
+│   │   ├── genuine_human_speech.wav    # Ground-truth authentic speech
+│   │   └── synthetic_voice_clone.wav   # Ground-truth AI voice clone
+│   ├── main.py                         # ASVspoof training/evaluation pipeline
+│   ├── models/                         # AASIST, RawNet2, and RawGAT-ST architectures
+│   └── config/                         # Architecture configurations
 │
-└── frontend/                           # React + Vite Frontend
-    ├── .gitignore                      # Node-specific ignores
-    ├── package.json                    # Frontend dependencies
-    ├── package-lock.json               # Lock file
-    ├── vite.config.js                  # Vite configuration
-    ├── index.html                      # Entry HTML
-    ├── public/                         # Static assets
-    │   ├── favicon.svg                 # Favicon
-    │   └── icons.svg                   # Icon sprites
-    └── src/                            # React source
+└── frontend/                           # React + Vite Security Console
+    ├── index.html                      # Entry point
+    ├── vite.config.js                  # Vite bundler configuration
+    ├── package.json                    # Node dependencies (Lucide-React, etc.)
+    ├── public/
+    │   └── samples/                    # Quick-test benchmark audio clips
+    │       ├── sample_real.wav         # Authentic human voice slice
+    │       └── sample_spoof.wav        # Cloned deepfake audio slice
+    └── src/
+        ├── App.jsx                     # AegisVoice Security Operations Console
         ├── main.jsx                    # React entry point
-        ├── App.jsx                     # Main application component
-        ├── App.css                     # Component styles
-        ├── index.css                   # Global styles
-        └── assets/                     # Static assets (images, fonts)
+        └── index.css                   # Industrial dark cybersecurity theme
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🔬 Core Detection Architecture
 
-### Prerequisites
+AegisVoice employs a layered defense approach designed specifically for live call fraud and voice spoofing:
 
-| Component | Version | Purpose |
-|-----------|---------|---------|
-| Python | 3.10+ | Backend runtime |
-| Node.js | 18+ | Frontend build tooling |
-| Git | Latest | Version control |
-| CUDA | 11.7+ | GPU acceleration (recommended) |
+1. **Neural Feature Extraction & Classification**:
+   - Model: `MelodyMachine/Deepfake-audio-detection-V2` (~94.6M parameters).
+   - Backbone: Pretrained Wav2Vec2 fine-tuned specifically for binary discrimination between genuine human speech and synthetic/cloned speech.
+   - Execution: Direct softmax projection with deterministic tensor indexing (`Logit 0 = Real`, `Logit 1 = Fake`). Fully runnable on both CPU and CUDA-enabled GPUs.
+   - Offline Caching: On first run, model weights download directly from Hugging Face and cache locally to `~/.cache/huggingface/hub/`, allowing 100% offline air-gapped demo execution.
 
----
+2. **Multi-Window Temporal Scanning**:
+   - Scammers frequently attempt evasion by speaking normally for the first few seconds before switching to an AI-cloned voice.
+   - AegisVoice automatically divides incoming recordings into uniform temporal windows (up to 8 windows across the recording duration).
+   - If any window exhibits severe synthetic probability ($\ge 85\%$), the call is escalated to **CRITICAL** threat status.
 
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/bleedingedge121/SIH26104-AI-Call-Detection.git
-cd SIH26104-AI-Call-Detection
-```
+3. **Auxiliary Acoustic Telemetry (Explainability)**:
+   - Extracts **MFCC Variance** and **Spectral Centroid Variance** to expose vocoder artifacts, unnatural harmonics, and spectral discontinuities characteristic of generative TTS models (e.g. ElevenLabs, VITS, Bark).
 
 ---
 
-### 2. Backend Setup (FastAPI + AASIST)
+## 🚀 Manual Step-by-Step Setup
 
+If you prefer to run the backend and frontend separately in dedicated terminals:
+
+### 1. Backend Setup
 ```bash
 cd backend
 
 # Create and activate virtual environment
 python -m venv venv
-# Windows
+# Windows:
 venv\Scripts\activate
-# macOS/Linux
+# macOS/Linux:
 source venv/bin/activate
 
 # Install dependencies
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# Verify model weights exist (required for inference)
-ls models/weights/
-# Should show: AASIST.pth  AASIST-L.pth
-
-# Start the FastAPI server
+# Start FastAPI server
 uvicorn app:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-**Backend will be available at:** `http://127.0.0.1:8000`  
-**API Documentation (Swagger UI):** `http://127.0.0.1:8000/docs`
-
----
-
-### 3. Frontend Setup (React + Vite)
-
+### 2. Frontend Setup
 ```bash
 cd frontend
 
-# Install dependencies
+# Install Node dependencies
 npm install
 
-# Start development server
+# Start Vite dev server
 npm run dev
 ```
 
-**Frontend will be available at:** `http://localhost:5173` (or next available port)
+---
+
+## 🧪 Verification & Benchmark Testing
+
+AegisVoice includes comprehensive automated test suites to ensure 100% reproducible results across any environment:
+
+### A. Automated Integration Tests
+```bash
+cd backend
+python test_api.py
+```
+*Validates `/health`, `/` root metadata, real audio ingestion, fake audio detection, and corrupt file rejection.*
+
+### B. Live Benchmark Dataset Verification
+```bash
+cd backend
+python verify_live_api.py
+```
+*Executes full-spectrum HTTP multipart tests against the live API across all bundled benchmark files (and external test datasets if present on the machine), outputting a complete accuracy report.*
+
+### C. Standalone CLI Inference
+You can analyze any audio file directly from the terminal without running the browser:
+```bash
+cd backend
+
+# Test Authentic Human Speech (Result: 0.0 Risk, SAFE, Real):
+python infer.py demo_samples/genuine_human_speech.wav
+
+# Test Synthetic AI Voice Clone (Result: 92.9 Risk, CRITICAL, Fake):
+python infer.py demo_samples/synthetic_voice_clone.wav
+```
 
 ---
 
-### 4. Run the Complete Application
+## 📡 API Specification
 
-1. **Start Backend** (Terminal 1):
-   ```bash
-   cd backend && venv\Scripts\activate && uvicorn app:app --host 127.0.0.1 --port 8000 --reload
-   ```
-
-2. **Start Frontend** (Terminal 2):
-   ```bash
-   cd frontend && npm run dev
-   ```
-
-3. **Open Browser** → Navigate to `http://localhost:5173`
-
----
-
-## 🔬 Backend API Reference
-
-### `GET /`
-Health check endpoint.
-
-**Response:**
+### `GET /health`
+Returns service and model runtime status.
 ```json
 {
-  "status": "Voice Anti-Spoofing API is running"
+  "status": "HEALTHY",
+  "model": "MelodyMachine/Deepfake-audio-detection-V2",
+  "model_loaded": true
 }
 ```
 
 ### `POST /score`
-Analyze an audio file for deepfake/spoofing detection.
+Analyzes an uploaded audio file for biometric spoofing and call fraud.
 
-**Request:** `multipart/form-data`
-- `file` (audio/*): WAV, MP3, or FLAC audio file
+**Request:** `multipart/form-data` with key `file` (`.wav`, `.mp3`, `.flac`, `.ogg`, `.m4a`)
 
-**Response:**
+**Response Example:**
 ```json
 {
-  "filename": "test_audio.wav",
-  "risk_score": 12.5,
+  "filename": "sample_real.wav",
+  "risk_score": 0.0,
   "status": "SAFE",
   "spectral_analysis": {
-    "mfcc_variance": 42.3,
-    "centroid_variance": 1250.7
+    "mfcc_variance": 623.19,
+    "centroid_variance": 90711.36
   },
-  "recommendation": "Allow transaction"
+  "recommendation": "Allow transaction",
+  "model_prediction": "real",
+  "model_confidence": 1.0,
+  "fake_probability": 0.0,
+  "real_probability": 1.0,
+  "windows_analyzed": 1
 }
 ```
 
-**Status Values:**
-- `SAFE` — Risk score ≤ 40
-- `SUSPICIOUS` — Risk score 41–70
-- `CRITICAL` — Risk score > 70
+**Risk Thresholds:**
+| Status | Risk Score | Recommended Action |
+|--------|------------|--------------------|
+| `SAFE` | 0 – 40 | Allow transaction / call |
+| `SUSPICIOUS` | 41 – 70 | Require Secondary Verification (OTP / Biometric step-up) |
+| `CRITICAL` | 71 – 100 | Block transaction / Terminate call |
 
 ---
 
-## 🧠 Model Architecture
+## 🎯 Security Operations Console Features
 
-### AASIST (Primary)
-**Audio Anti-Spoofing using Integrated Spectro-Temporal Graph Attention Networks**
-
-- **Paper:** [arXiv:2110.01200](https://arxiv.org/abs/2110.01200)
-- **Architecture:** Heterogeneous Graph Attention Network combining spectrogram and raw waveform branches
-- **Performance:** EER 0.83%, min t-DCF 0.0275 on ASVspoof 2019 LA
-- **Parameters:** ~1.2M
-
-### AASIST-L (Lightweight)
-- **Parameters:** 85,306
-- **Performance:** EER 0.99%, min t-DCF 0.0309
-- **Use case:** Edge deployment, real-time inference
-
-### Baselines Included
-- **RawNet2** — End-to-end anti-spoofing with raw waveforms
-- **RawGAT-ST** — Spectro-temporal graph attention baseline
-
----
-
-## 🎯 Frontend Features
-
-- **Live Audio Recording** — Browser MediaRecorder API @ 16kHz
-- **File Upload** — Drag-and-drop WAV/MP3/FLAC support
-- **Real-time Visualization** — Risk score, status, spectral metrics
-- **Responsive Design** — Mobile-first, dark theme with cyan/amber accents
-- **Telemetry Dashboard** — MFCC variance, spectral centroid variance
-- **Operational Directives** — Actionable recommendations per classification
+- **Quick-Test Audio Bench**: Instant 1-click evaluation buttons (`[ Authentic Voice ]` and `[ Synthetic Clone ]`) referencing bundled benchmark slices.
+- **Multi-Source Ingestion**: Drag-and-drop file upload (`WAV`, `MP3`, `FLAC`, `OGG`, `M4A`) or live 16kHz microphone recording via Web Audio API.
+- **Biometric Threat Meter**: Real-time calibrated risk score gauge with threshold indicator needles.
+- **Signal Explainability Telemetry**: Real-time spectral variance measurements and window coverage auditing.
+- **Industrial Cybersecurity Interface**: Dark-mode console aesthetics (`#0c1017`) engineered for command-center demonstrations.
 
 ---
 
@@ -365,6 +365,7 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 **AASIST Original License:** Copyright (c) 2021-present NAVER Corp. — MIT License
 
 ---
+
 - **Email:** kavish.shrimal@mitb.ac.in
 
 ---

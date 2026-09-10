@@ -14,11 +14,16 @@ import {
   Terminal,
   PlayCircle,
   Radio,
-  FileCheck
+  FileCheck,
+  Download,
+  Volume2,
+  Fingerprint,
+  Layers,
 } from 'lucide-react';
 
 export default function App() {
   const [file, setFile] = useState(null);
+  const [audioUrl, setAudioUrl] = useState(null);
   const [recording, setRecording] = useState(false);
   const [recordDuration, setRecordDuration] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -50,6 +55,45 @@ export default function App() {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [recording]);
+
+  useEffect(() => {
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setAudioUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setAudioUrl(null);
+    }
+  }, [file]);
+
+  const exportForensicReport = () => {
+    if (!result) return;
+    const reportData = {
+      system: 'AegisVoice AI - Biometric Anti-Spoofing Operations Center',
+      version: '2.4.0-production',
+      timestamp: new Date().toISOString(),
+      file_name: result.filename,
+      audio_sha256: result.audio_hash,
+      duration_seconds: result.duration_seconds,
+      threat_level: result.status,
+      biometric_verdict: result.model_prediction ? result.model_prediction.toUpperCase() : 'UNKNOWN',
+      computed_risk_score: result.risk_score,
+      confidence: result.model_confidence,
+      genuine_probability: result.real_probability,
+      synthetic_probability: result.fake_probability,
+      directive: result.recommendation,
+      temporal_timeline_breakdown: result.temporal_breakdown || [],
+      acoustic_telemetry: result.spectral_analysis || {},
+    };
+
+    const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `AegisVoice_Forensic_Audit_${result.filename.replace(/\.[^/.]+$/, '')}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -235,23 +279,42 @@ export default function App() {
 
             {/* Quick Test Audio Bench */}
             <div style={styles.presetSection}>
-              <div style={styles.presetLabel}>QUICK TEST AUDIO</div>
-              <div style={styles.presetButtonGroup}>
+              <div style={styles.presetHeader}>
+                <span style={styles.presetLabel}>BENCHMARK ACCURACY SAMPLES</span>
+                <span style={styles.presetBadge}>1-CLICK EVAL</span>
+              </div>
+              <div style={styles.presetGrid}>
                 <button
                   type="button"
-                  onClick={() => loadPresetSample('/samples/sample_real.wav', 'sample_real.wav')}
+                  onClick={() => loadPresetSample('/samples/sample_real.wav', 'sample_real_broadcast.wav')}
                   style={styles.presetButton}
                 >
                   <PlayCircle size={14} color="#10b981" />
-                  <span>Authentic Voice</span>
+                  <span>Authentic (Sample 1)</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => loadPresetSample('/samples/sample_spoof.wav', 'sample_spoof.wav')}
+                  onClick={() => loadPresetSample('/samples/sample_spoof.wav', 'sample_spoof_clone.wav')}
                   style={styles.presetButton}
                 >
                   <PlayCircle size={14} color="#ef4444" />
-                  <span>Synthetic Clone</span>
+                  <span>Synthetic (Clone 1)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => loadPresetSample('/samples/sample_voxceleb.wav', 'sample_voxceleb_real.wav')}
+                  style={styles.presetButton}
+                >
+                  <PlayCircle size={14} color="#10b981" />
+                  <span>Authentic (VoxCeleb)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => loadPresetSample('/samples/sample_vocoder.wav', 'sample_vocoder_synth.wav')}
+                  style={styles.presetButton}
+                >
+                  <PlayCircle size={14} color="#ef4444" />
+                  <span>Synthetic (Vocoder)</span>
                 </button>
               </div>
             </div>
@@ -261,7 +324,7 @@ export default function App() {
               <label style={styles.uploadArea}>
                 <UploadCloud size={24} color="#38bdf8" />
                 <div style={styles.uploadTextPrimary}>Upload Audio Recording</div>
-                <div style={styles.uploadTextSecondary}>Supports WAV, MP3, FLAC, OGG</div>
+                <div style={styles.uploadTextSecondary}>Supports WAV, MP3, FLAC, OGG, M4A</div>
                 <input
                   type="file"
                   accept="audio/*,.wav,.mp3,.flac,.ogg,.m4a"
@@ -284,27 +347,39 @@ export default function App() {
               )}
             </div>
 
-            {/* Selected File Details */}
+            {/* Selected File Details & Audio Playback */}
             {file && (
               <div style={styles.fileCard}>
-                <FileAudio size={18} color="#38bdf8" style={{ flexShrink: 0 }} />
-                <div style={styles.fileCardContent}>
-                  <div style={styles.fileName}>{file.name}</div>
-                  <div style={styles.fileSize}>
-                    {(file.size / 1024).toFixed(1)} KB • {file.type || 'audio/wav'}
+                <div style={styles.fileHeaderRow}>
+                  <FileAudio size={18} color="#38bdf8" style={{ flexShrink: 0 }} />
+                  <div style={styles.fileCardContent}>
+                    <div style={styles.fileName}>{file.name}</div>
+                    <div style={styles.fileSize}>
+                      {(file.size / 1024).toFixed(1)} KB • {file.type || 'audio/wav'}
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFile(null);
+                      setResult(null);
+                    }}
+                    style={styles.clearFileButton}
+                    title="Remove target"
+                  >
+                    ✕
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFile(null);
-                    setResult(null);
-                  }}
-                  style={styles.clearFileButton}
-                  title="Remove target"
-                >
-                  ✕
-                </button>
+
+                {audioUrl && (
+                  <div style={styles.audioPlayerBox}>
+                    <div style={styles.audioPlayerLabel}>
+                      <Volume2 size={12} color="#64748b" />
+                      <span>AUDIO PLAYBACK</span>
+                    </div>
+                    <audio controls src={audioUrl} style={styles.nativeAudioElement} />
+                  </div>
+                )}
               </div>
             )}
 
@@ -528,6 +603,52 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Temporal Segment Threat Timeline */}
+              {result.temporal_breakdown && result.temporal_breakdown.length > 0 && (
+                <div style={styles.card}>
+                  <div style={styles.evidenceHeader}>
+                    <Layers size={15} color="#38bdf8" />
+                    <span style={styles.evidenceTitle}>TEMPORAL SEGMENT THREAT TIMELINE</span>
+                    <span style={styles.evidenceSubbadge}>
+                      {result.windows_analyzed} Window{result.windows_analyzed > 1 ? 's' : ''} ({result.duration_seconds || '4.0'}s Total)
+                    </span>
+                  </div>
+                  <div style={styles.timelineGrid}>
+                    {result.temporal_breakdown.map((win) => {
+                      const isCrit = win.status === 'CRITICAL';
+                      const isWarn = win.status === 'SUSPICIOUS';
+                      const color = isCrit ? '#ef4444' : isWarn ? '#f59e0b' : '#10b981';
+                      return (
+                        <div key={win.window_index} style={styles.timelineCard}>
+                          <div style={styles.timelineHeader}>
+                            <span style={styles.timelineWindowLabel}>WINDOW #{win.window_index}</span>
+                            <span style={{ ...styles.timelineStatusPill, color, borderColor: color }}>
+                              {win.status}
+                            </span>
+                          </div>
+                          <div style={styles.timelineTimeText}>
+                            {win.start_time}s — {win.end_time}s
+                          </div>
+                          <div style={styles.timelineMiniBarTrack}>
+                            <div
+                              style={{
+                                ...styles.timelineMiniBarFill,
+                                width: `${Math.min(100, Math.max(0, win.risk_score))}%`,
+                                backgroundColor: color,
+                              }}
+                            />
+                          </div>
+                          <div style={styles.timelineRiskRow}>
+                            <span style={styles.timelineRiskText}>Threat: <strong>{win.risk_score}%</strong></span>
+                            <span style={styles.timelineProbText}>Real: {(win.real_probability * 100).toFixed(1)}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Security Directive */}
               <div style={styles.directiveCard}>
                 <div style={styles.directiveHeader}>
@@ -562,18 +683,68 @@ export default function App() {
                       <span style={styles.spectralItemLabel}>SPECTRAL CENTROID VARIANCE</span>
                       <span style={styles.spectralItemValue}>{result.spectral_analysis.centroid_variance}</span>
                       <span style={styles.spectralItemNote}>
-                        Measures frequency distribution center of mass movement.
+                        Measures frequency center of mass distribution.
                       </span>
                     </div>
+
+                    {result.spectral_analysis.spectral_rolloff_hz !== undefined && (
+                      <div style={styles.spectralItem}>
+                        <span style={styles.spectralItemLabel}>SPECTRAL ROLLOFF (85%)</span>
+                        <span style={styles.spectralItemValue}>{result.spectral_analysis.spectral_rolloff_hz} Hz</span>
+                        <span style={styles.spectralItemNote}>
+                          High-frequency energy boundary of vocal tract.
+                        </span>
+                      </div>
+                    )}
+
+                    {result.spectral_analysis.zero_crossing_rate !== undefined && (
+                      <div style={styles.spectralItem}>
+                        <span style={styles.spectralItemLabel}>ZERO CROSSING RATE</span>
+                        <span style={styles.spectralItemValue}>{result.spectral_analysis.zero_crossing_rate}</span>
+                        <span style={styles.spectralItemNote}>
+                          Acoustic roughness and fricative density.
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
+              {/* Cryptographic Forensic Audit Card */}
+              <div style={styles.forensicCard}>
+                <div style={styles.forensicLeft}>
+                  <div style={styles.forensicTitleRow}>
+                    <Fingerprint size={16} color="#38bdf8" />
+                    <span style={styles.forensicTitle}>CRYPTOGRAPHIC FORENSIC AUDIT</span>
+                  </div>
+                  <div style={styles.hashRow}>
+                    <span style={styles.hashLabel}>SHA-256:</span>
+                    <code style={styles.hashCode}>{result.audio_hash || '0000000000000000000000000000000000000000000000000000000000000000'}</code>
+                  </div>
+                  <div style={styles.forensicSpecs}>
+                    <span>Duration: <strong>{result.duration_seconds || '4.0'}s</strong></span>
+                    <span>•</span>
+                    <span>Sample Rate: <strong>{result.sample_rate || 16000} Hz</strong></span>
+                    <span>•</span>
+                    <span>Channels: <strong>Mono (G.711 / PCM)</strong></span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={exportForensicReport}
+                  style={styles.exportReportButton}
+                  title="Download official forensic audit report in JSON"
+                >
+                  <Download size={14} />
+                  <span>Export Forensic Report</span>
+                </button>
+              </div>
+
               {/* Audit Footer */}
               <div style={styles.auditBar}>
                 <span>FILE: <code>{result.filename}</code></span>
-                <span>CHANNELS: <code>MONO (16 kHz)</code></span>
-                <span>HTTP: <code>200 OK</code></span>
+                <span>MODEL: <code>Wav2Vec2 Fine-Tuned</code></span>
+                <span>STATUS: <code>200 OK</code></span>
               </div>
             </div>
           )}
@@ -715,7 +886,12 @@ const styles = {
     padding: '12px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
+    gap: '10px',
+  },
+  presetHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   presetLabel: {
     fontSize: '10px',
@@ -723,7 +899,17 @@ const styles = {
     letterSpacing: '0.06em',
     color: '#64748b',
   },
-  presetButtonGroup: {
+  presetBadge: {
+    fontSize: '9px',
+    fontWeight: '800',
+    letterSpacing: '0.08em',
+    color: '#38bdf8',
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    border: '1px solid rgba(56, 189, 248, 0.25)',
+  },
+  presetGrid: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: '8px',
@@ -738,9 +924,10 @@ const styles = {
     color: '#e2e8f0',
     padding: '8px 10px',
     borderRadius: '6px',
-    fontSize: '12px',
+    fontSize: '11px',
     fontWeight: '600',
     cursor: 'pointer',
+    textAlign: 'center',
   },
   inputControls: {
     display: 'flex',
@@ -805,12 +992,18 @@ const styles = {
   },
   fileCard: {
     display: 'flex',
-    alignItems: 'center',
+    flexDirection: 'column',
     gap: '10px',
-    padding: '10px 12px',
+    padding: '12px',
     backgroundColor: '#131d2b',
     border: '1px solid #1e3a5f',
-    borderRadius: '6px',
+    borderRadius: '8px',
+  },
+  fileHeaderRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    width: '100%',
   },
   fileCardContent: {
     flex: 1,
@@ -835,6 +1028,27 @@ const styles = {
     color: '#94a3b8',
     cursor: 'pointer',
     padding: '4px',
+  },
+  audioPlayerBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    paddingTop: '6px',
+    borderTop: '1px solid #1a2a40',
+  },
+  audioPlayerLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '10px',
+    fontWeight: '700',
+    letterSpacing: '0.05em',
+    color: '#64748b',
+  },
+  nativeAudioElement: {
+    width: '100%',
+    height: '32px',
+    outline: 'none',
   },
   analyzeButton: {
     display: 'flex',
@@ -1149,6 +1363,157 @@ const styles = {
     fontSize: '11px',
     color: '#64748b',
     lineHeight: '1.4',
+  },
+  evidenceSubbadge: {
+    marginLeft: 'auto',
+    fontSize: '11px',
+    color: '#64748b',
+    fontFamily: 'ui-monospace, monospace',
+    backgroundColor: '#0c1017',
+    padding: '3px 8px',
+    borderRadius: '4px',
+    border: '1px solid #1e293b',
+  },
+  timelineGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '12px',
+    marginTop: '6px',
+  },
+  timelineCard: {
+    backgroundColor: '#0c1017',
+    border: '1px solid #1c2638',
+    borderRadius: '6px',
+    padding: '12px 14px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  timelineHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  timelineWindowLabel: {
+    fontSize: '10px',
+    fontWeight: '700',
+    color: '#64748b',
+    letterSpacing: '0.05em',
+  },
+  timelineStatusPill: {
+    fontSize: '9px',
+    fontWeight: '800',
+    letterSpacing: '0.05em',
+    padding: '2px 6px',
+    borderRadius: '10px',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+  },
+  timelineTimeText: {
+    fontSize: '12px',
+    fontFamily: 'ui-monospace, monospace',
+    color: '#cbd5e1',
+    fontWeight: '600',
+  },
+  timelineMiniBarTrack: {
+    width: '100%',
+    height: '6px',
+    backgroundColor: '#1e293b',
+    borderRadius: '3px',
+    overflow: 'hidden',
+  },
+  timelineMiniBarFill: {
+    height: '100%',
+    borderRadius: '3px',
+    transition: 'width 0.3s ease',
+  },
+  timelineRiskRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    fontSize: '11px',
+    color: '#94a3b8',
+    fontFamily: 'ui-monospace, monospace',
+  },
+  timelineRiskText: {
+    color: '#cbd5e1',
+  },
+  timelineProbText: {
+    color: '#64748b',
+    fontSize: '10px',
+  },
+  forensicCard: {
+    backgroundColor: '#0b111a',
+    border: '1px solid #1e3a5f',
+    borderRadius: '8px',
+    padding: '16px 20px',
+    display: 'flex',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '16px',
+  },
+  forensicLeft: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    flex: '1 1 300px',
+  },
+  forensicTitleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  forensicTitle: {
+    fontSize: '11px',
+    fontWeight: '700',
+    letterSpacing: '0.07em',
+    color: '#38bdf8',
+  },
+  hashRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flexWrap: 'wrap',
+  },
+  hashLabel: {
+    fontSize: '10px',
+    fontWeight: '700',
+    color: '#64748b',
+    letterSpacing: '0.05em',
+  },
+  hashCode: {
+    fontSize: '11px',
+    fontFamily: 'ui-monospace, monospace',
+    color: '#a5f3fc',
+    backgroundColor: '#040d1a',
+    padding: '3px 8px',
+    borderRadius: '4px',
+    border: '1px solid #15324d',
+    wordBreak: 'break-all',
+  },
+  forensicSpecs: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '11px',
+    color: '#64748b',
+    marginTop: '2px',
+  },
+  exportReportButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    backgroundColor: '#0369a1',
+    color: '#ffffff',
+    border: '1px solid #0284c7',
+    padding: '9px 16px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: '700',
+    letterSpacing: '0.02em',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
   },
   auditBar: {
     display: 'flex',

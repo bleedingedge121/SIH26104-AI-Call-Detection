@@ -73,21 +73,29 @@ SIH26104-AI-Call-Detection/
 
 ## 🔬 Core Detection Architecture
 
-AegisVoice employs a layered defense approach designed specifically for live call fraud and voice spoofing:
+AegisVoice employs an enterprise-grade, multi-layered defense pipeline engineered specifically for live call defense and voice spoofing prevention:
 
-1. **Neural Feature Extraction & Classification**:
+1. **Fine-Tuned Wav2Vec2 Neural Backbone**:
    - Model: `MelodyMachine/Deepfake-audio-detection-V2` (~94.6M parameters).
-   - Backbone: Pretrained Wav2Vec2 fine-tuned specifically for binary discrimination between genuine human speech and synthetic/cloned speech.
+   - Pretrained speech representations fine-tuned specifically for binary discrimination between authentic human vocal cords and neural vocoder/TTS voice cloning (ElevenLabs, VITS, WaveGrad, HiFi-GAN, Bark, etc.).
    - Execution: Direct softmax projection with deterministic tensor indexing (`Logit 0 = Real`, `Logit 1 = Fake`). Fully runnable on both CPU and CUDA-enabled GPUs.
-   - Offline Caching: On first run, model weights download directly from Hugging Face and cache locally to `~/.cache/huggingface/hub/`, allowing 100% offline air-gapped demo execution.
+   - Offline Air-Gap Operation: Model weights download from Hugging Face on initial launch and cache locally in `~/.cache/huggingface/hub/`. Subsequent runs require **zero internet connectivity** and zero third-party API keys.
 
-2. **Multi-Window Temporal Scanning**:
-   - Scammers frequently attempt evasion by speaking normally for the first few seconds before switching to an AI-cloned voice.
-   - AegisVoice automatically divides incoming recordings into uniform temporal windows (up to 8 windows across the recording duration).
-   - If any window exhibits severe synthetic probability ($\ge 85\%$), the call is escalated to **CRITICAL** threat status.
+2. **Multi-Window Temporal Threat Scanning**:
+   - Scammers frequently attempt anti-forensic evasion by speaking naturally during call initialization before activating synthetic clones for fraudulent instructions.
+   - AegisVoice extracts up to 8 overlapping temporal windows across the call duration, tracking exact start and end timestamps.
+   - If any window exhibits severe synthetic probability ($\ge 85\%$), AegisVoice escalates the call threat status to **CRITICAL**, preventing evasive hybrid calls.
 
-3. **Auxiliary Acoustic Telemetry (Explainability)**:
-   - Extracts **MFCC Variance** and **Spectral Centroid Variance** to expose vocoder artifacts, unnatural harmonics, and spectral discontinuities characteristic of generative TTS models (e.g. ElevenLabs, VITS, Bark).
+3. **Auxiliary Acoustic Spectral Explainability**:
+   - Computes multi-spectral acoustic telemetry to provide forensic analysts with explainable physical signals:
+     - **MFCC Variance**: Quantifies timbre dynamics across time frames (unnatural smoothness indicates vocoder synthesis).
+     - **Spectral Centroid Variance**: Tracks frequency center-of-mass distribution across vocal tract formants.
+     - **Spectral Rolloff (85% Cutoff Hz)**: Identifies the high-frequency spectral roll-off boundary where AI vocoders typically leave phase artifacts.
+     - **Zero Crossing Rate (ZCR)**: Analyzes acoustic roughness and fricative consonant density.
+
+4. **Cryptographic Integrity & Non-Repudiation**:
+   - Computes an SHA-256 cryptographic digest of incoming raw audio bytes upon arrival.
+   - Provides 1-click **Forensic JSON Export** with cryptographic fingerprinting, audio specifications, temporal breakdown, and compliance security directives for chain-of-custody audit logs.
 
 ---
 
@@ -182,16 +190,31 @@ Analyzes an uploaded audio file for biometric spoofing and call fraud.
   "filename": "sample_real.wav",
   "risk_score": 0.0,
   "status": "SAFE",
-  "spectral_analysis": {
-    "mfcc_variance": 623.19,
-    "centroid_variance": 90711.36
-  },
-  "recommendation": "Allow transaction",
   "model_prediction": "real",
   "model_confidence": 1.0,
   "fake_probability": 0.0,
   "real_probability": 1.0,
-  "windows_analyzed": 1
+  "windows_analyzed": 1,
+  "duration_seconds": 3.74,
+  "audio_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "temporal_breakdown": [
+    {
+      "window_index": 1,
+      "start_time": 0.0,
+      "end_time": 3.74,
+      "real_probability": 1.0,
+      "fake_probability": 0.0,
+      "risk_score": 0.0,
+      "status": "SAFE"
+    }
+  ],
+  "spectral_analysis": {
+    "mfcc_variance": 623.19,
+    "centroid_variance": 90711.36,
+    "spectral_rolloff_hz": 3140.5,
+    "zero_crossing_rate": 0.0542
+  },
+  "recommendation": "Allow transaction"
 }
 ```
 
@@ -206,11 +229,13 @@ Analyzes an uploaded audio file for biometric spoofing and call fraud.
 
 ## 🎯 Security Operations Console Features
 
-- **Quick-Test Audio Bench**: Instant 1-click evaluation buttons (`[ Authentic Voice ]` and `[ Synthetic Clone ]`) referencing bundled benchmark slices.
+- **Quick-Test Audio Bench**: 4 Instant 1-click evaluation presets (`[ Sample 1 Real ]`, `[ Clone 1 (ElevenLabs) ]`, `[ VoxCeleb Real ]`, and `[ Vocoder Synthetic ]`) with embedded HTML5 waveform playback.
+- **Temporal Threat Segment Timeline**: Visual multi-segment breakdown showing localized risk scores and timestamps across the entire duration of the recording.
+- **Cryptographic Forensic Audit Card**: Real-time SHA-256 integrity digest computation with 1-click **Export Forensic Report** (downloadable `.json` audit certificate).
 - **Multi-Source Ingestion**: Drag-and-drop file upload (`WAV`, `MP3`, `FLAC`, `OGG`, `M4A`) or live 16kHz microphone recording via Web Audio API.
 - **Biometric Threat Meter**: Real-time calibrated risk score gauge with threshold indicator needles.
-- **Signal Explainability Telemetry**: Real-time spectral variance measurements and window coverage auditing.
-- **Industrial Cybersecurity Interface**: Dark-mode console aesthetics (`#0c1017`) engineered for command-center demonstrations.
+- **Signal Explainability Telemetry**: Real-time physical metrics (MFCC Variance, Centroid Variance, Spectral Rolloff, and Zero Crossing Rate).
+- **Industrial Cybersecurity Interface**: Dark-mode SOC console aesthetics (`#0c1017`) engineered for SIH evaluation panels and hackathon demonstrations.
 
 ---
 

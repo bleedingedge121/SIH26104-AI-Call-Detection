@@ -83,6 +83,11 @@ def main():
         os.path.join(SCRIPT_DIR, "..", "frontend", "public", "samples", "sample_real.wav"),
         "D:/SIH/Dataset/micro-machines.wav",
     ]
+    ext_real_dir = os.path.join(SCRIPT_DIR, "test_data_external", "real")
+    if os.path.exists(ext_real_dir):
+        for fname in sorted(os.listdir(ext_real_dir)):
+            if fname.lower().endswith((".wav", ".mp3", ".flac", ".ogg", ".m4a")):
+                real_candidates.append(os.path.join(ext_real_dir, fname))
 
     tested_real = 0
     passed_real = 0
@@ -101,6 +106,11 @@ def main():
         os.path.join(SCRIPT_DIR, "sample.wav"),
         os.path.join(SCRIPT_DIR, "..", "frontend", "public", "samples", "sample_spoof.wav"),
     ]
+    ext_fake_dir = os.path.join(SCRIPT_DIR, "test_data_external", "fake")
+    if os.path.exists(ext_fake_dir):
+        for fname in sorted(os.listdir(ext_fake_dir)):
+            if fname.lower().endswith((".wav", ".mp3", ".flac", ".ogg", ".m4a")):
+                fake_candidates.append(os.path.join(ext_fake_dir, fname))
 
     # Include external dataset if present on host machine
     external_fake_dir = "D:/SIH/Dataset/Fake"

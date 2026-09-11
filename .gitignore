@@ -135,3 +135,8 @@ target_length
 *.wav
 *.mp3
 *.flac
+!backend/sample.wav
+!backend/sample2.wav
+!backend/demo_samples/*.wav
+!backend/test_data_external/**/*.wav
+!frontend/public/samples/*.wav

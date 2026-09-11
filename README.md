@@ -370,28 +370,11 @@ services:
       - backend
 ```
 
----
-
-## 🤝 Contributors
-
-| Name | Role | GitHub |
-|------|------|--------|
-| **Kavish Shrimal** | Project Lead, Full-Stack Developer | [@bleedingedge121](https://github.com/bleedingedge121) |
-| *Add contributors here* | | |
-
-> **Want to contribute?** See [CONTRIBUTING.md](CONTRIBUTING.md) (create one!) for guidelines.
-
----
-
 ## 📜 License
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
 **AASIST Original License:** Copyright (c) 2021-present NAVER Corp. — MIT License
-
----
-
-- **Email:** kavish.shrimal@mitb.ac.in
 
 ---
 

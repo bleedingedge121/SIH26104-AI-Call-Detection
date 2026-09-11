@@ -1,149 +1,134 @@
-import io
-from pathlib import Path
-import sys
-import subprocess
+"""
+AegisVoice Benchmark Audio Downloader
+Smart India Hackathon 2026 - Problem Statement 104
 
-# Install dependencies if needed
+Downloads and normalizes 10 modern speech benchmarks:
+- 5 Authentic Human Speech files (VoxCeleb) -> test_audio/real/
+- 5 Synthetic AI Clone / Vocoder files (WaveFake / HiFi-GAN) -> test_audio/fake/
+"""
+
+import os
+import sys
+import io
+import shutil
+from pathlib import Path
+import requests
+
+# Try importing soundfile
 try:
-    from datasets import load_dataset, Audio
     import soundfile as sf
 except ImportError:
-    subprocess.check_call([
-        sys.executable, "-m", "pip", "install",
-        "-U", "datasets", "soundfile"
-    ])
-    from datasets import load_dataset, Audio
+    import subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "soundfile"])
     import soundfile as sf
 
+try:
+    from huggingface_hub import hf_hub_download
+except ImportError:
+    hf_hub_download = None
 
-# ============================================================
-# CONFIG
-# ============================================================
+REPO_ROOT = Path(__file__).resolve().parent
+OUTPUT_DIR = REPO_ROOT / "test_audio"
+REAL_DIR = OUTPUT_DIR / "real"
+FAKE_DIR = OUTPUT_DIR / "fake"
 
-OUTPUT_DIR = Path("test_audio")
+REAL_DIR.mkdir(parents=True, exist_ok=True)
+FAKE_DIR.mkdir(parents=True, exist_ok=True)
 
-REAL_COUNT = 5
-FAKE_COUNT = 5
+HF_DATASET = "3004lakshu/Deepfake-Audio"
+BASE_URL = f"https://huggingface.co/datasets/{HF_DATASET}/resolve/main"
 
-DATASET = "SpeechAntiSpoofingBenchmarks/ASVspoof2019_LA"
+REAL_FILES = [
+    ("raw_audio/real/00004.wav", "real_01.wav", "real_01_voxceleb_00004.wav"),
+    ("raw_audio/real/00005.wav", "real_02.wav", "real_02_voxceleb_00005.wav"),
+    ("raw_audio/real/00006.wav", "real_03.wav", "real_03_voxceleb_00006.wav"),
+    ("raw_audio/real/00007.wav", "real_04.wav", "real_04_voxceleb_00007.wav"),
+    ("raw_audio/real/00008.wav", "real_05.wav", "real_05_voxceleb_00008.wav"),
+]
 
+FAKE_FILES = [
+    ("raw_audio/fake/file2270.wav_16k.wav_norm.wav_mono.wav_silence.wav", "fake_01.wav", "fake_01_synth_2270.wav"),
+    ("raw_audio/fake/file2271.wav_16k.wav_norm.wav_mono.wav_silence.wav", "fake_02.wav", "fake_02_synth_2271.wav"),
+    ("raw_audio/fake/file2272.wav_16k.wav_norm.wav_mono.wav_silence.wav", "fake_03.wav", "fake_03_synth_2272.wav"),
+    ("raw_audio/fake/file2273.wav_16k.wav_norm.wav_mono.wav_silence.wav", "fake_04.wav", "fake_04_synth_2273.wav"),
+    ("raw_audio/fake/file2274.wav_16k.wav_norm.wav_mono.wav_silence.wav", "fake_05.wav", "fake_05_synth_2274.wav"),
+]
 
-# ============================================================
-# STREAM DATASET
-# ============================================================
-
-print("Opening ASVspoof 2019 LA in STREAMING mode...")
-print("Only samples needed for the test set will be read.\n")
-
-ds = load_dataset(
-    DATASET,
-    split="test",
-    streaming=True
-).cast_column("audio", Audio(decode=False))
-
-
-# ============================================================
-# OUTPUT DIRECTORIES
-# ============================================================
-
-real_dir = OUTPUT_DIR / "real"
-fake_dir = OUTPUT_DIR / "fake"
-
-real_dir.mkdir(parents=True, exist_ok=True)
-fake_dir.mkdir(parents=True, exist_ok=True)
+LOCAL_BACKEND_EXTERNAL = REPO_ROOT / "backend" / "test_data_external"
 
 
-# ============================================================
-# COLLECT + SAVE
-# ============================================================
-
-real_count = 0
-fake_count = 0
-
-print("Searching for samples...\n")
-
-for sample in ds:
-
-    label = sample["label"]
-
-    # Handle either ClassLabel integer or string labels
-    if isinstance(label, int):
-        is_real = label == 0
-        is_fake = label == 1
+def save_audio(src_bytes_or_path, dest_path):
+    """Loads audio, ensures 16kHz mono, and writes standard PCM-16 WAV."""
+    if isinstance(src_bytes_or_path, (bytes, bytearray)):
+        data, sr = sf.read(io.BytesIO(src_bytes_or_path))
     else:
-        label = str(label).lower()
-        is_real = label == "bonafide"
-        is_fake = label == "spoof"
-
-    # --------------------------------------------------------
-    # REAL
-    # --------------------------------------------------------
-
-    if is_real and real_count < REAL_COUNT:
-
-        audio = sample["audio"]
-        output = real_dir / f"real_{real_count + 1:02d}.wav"
-
-        if "bytes" in audio and audio["bytes"] is not None:
-            data, sr = sf.read(io.BytesIO(audio["bytes"]))
-        else:
-            data = audio["array"]
-            sr = 16000
-
-        sf.write(
-            output,
-            data,
-            sr,
-            subtype="PCM_16"
-        )
-
-        real_count += 1
-
-        print(f"[REAL] {output} ({len(data)} samples @ {sr}Hz)")
-
-    # --------------------------------------------------------
-    # FAKE
-    # --------------------------------------------------------
-
-    elif is_fake and fake_count < FAKE_COUNT:
-
-        audio = sample["audio"]
-        output = fake_dir / f"fake_{fake_count + 1:02d}.wav"
-
-        if "bytes" in audio and audio["bytes"] is not None:
-            data, sr = sf.read(io.BytesIO(audio["bytes"]))
-        else:
-            data = audio["array"]
-            sr = 16000
-
-        sf.write(
-            output,
-            data,
-            sr,
-            subtype="PCM_16"
-        )
-
-        fake_count += 1
-
-        print(f"[FAKE] {output} ({len(data)} samples @ {sr}Hz)")
-
-    # --------------------------------------------------------
-    # STOP WHEN WE HAVE EVERYTHING
-    # --------------------------------------------------------
-
-    if real_count >= REAL_COUNT and fake_count >= FAKE_COUNT:
-        break
+        data, sr = sf.read(str(src_bytes_or_path))
+    
+    if len(data.shape) > 1:
+        data = data.mean(axis=1)
+    
+    sf.write(str(dest_path), data, sr, subtype="PCM_16")
+    return len(data), sr
 
 
-# ============================================================
-# RESULT
-# ============================================================
+print("================================================================")
+print("  AEGISVOICE BENCHMARK AUDIO DOWNLOADER")
+print("  Downloading 5 Real (VoxCeleb) & 5 Fake (Neural Vocoder) Files")
+print("================================================================\n")
 
-print("\n========================================")
-print("DONE")
-print("========================================")
-print(f"Real samples : {real_count}")
-print(f"Fake samples : {fake_count}")
-print(f"Output       : {OUTPUT_DIR.absolute()}")
-print("Format       : 16 kHz WAV / PCM-16")
-print("========================================")
+# 1. Process REAL files
+real_saved = 0
+for remote_path, out_name, local_name in REAL_FILES:
+    out_file = REAL_DIR / out_name
+    local_candidate = LOCAL_BACKEND_EXTERNAL / "real" / local_name
+    
+    if local_candidate.exists():
+        samples, sr = save_audio(local_candidate, out_file)
+        real_saved += 1
+        print(f"[REAL] {out_file.relative_to(REPO_ROOT)} ({samples} samples @ {sr}Hz) [from local cache]")
+    else:
+        try:
+            if hf_hub_download:
+                cached = hf_hub_download(HF_DATASET, remote_path, repo_type="dataset")
+                samples, sr = save_audio(cached, out_file)
+            else:
+                resp = requests.get(f"{BASE_URL}/{remote_path}")
+                resp.raise_for_status()
+                samples, sr = save_audio(resp.content, out_file)
+            real_saved += 1
+            print(f"[REAL] {out_file.relative_to(REPO_ROOT)} ({samples} samples @ {sr}Hz) [downloaded from HF]")
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch {remote_path}: {e}")
+
+# 2. Process FAKE files
+fake_saved = 0
+for remote_path, out_name, local_name in FAKE_FILES:
+    out_file = FAKE_DIR / out_name
+    local_candidate = LOCAL_BACKEND_EXTERNAL / "fake" / local_name
+    
+    if local_candidate.exists():
+        samples, sr = save_audio(local_candidate, out_file)
+        fake_saved += 1
+        print(f"[FAKE] {out_file.relative_to(REPO_ROOT)} ({samples} samples @ {sr}Hz) [from local cache]")
+    else:
+        try:
+            if hf_hub_download:
+                cached = hf_hub_download(HF_DATASET, remote_path, repo_type="dataset")
+                samples, sr = save_audio(cached, out_file)
+            else:
+                resp = requests.get(f"{BASE_URL}/{remote_path}")
+                resp.raise_for_status()
+                samples, sr = save_audio(resp.content, out_file)
+            fake_saved += 1
+            print(f"[FAKE] {out_file.relative_to(REPO_ROOT)} ({samples} samples @ {sr}Hz) [downloaded from HF]")
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch {remote_path}: {e}")
+
+print("\n================================================================")
+print("DOWNLOAD COMPLETE")
+print("================================================================")
+print(f"Authentic Human Speech (VoxCeleb)       : {real_saved} / 5 files in {REAL_DIR}")
+print(f"Synthetic AI Deepfake (Neural Vocoders)  : {fake_saved} / 5 files in {FAKE_DIR}")
+print(f"Target Directory                        : {OUTPUT_DIR}")
+print("Format                                  : 16 kHz Mono PCM-16 WAV")
+print("================================================================")

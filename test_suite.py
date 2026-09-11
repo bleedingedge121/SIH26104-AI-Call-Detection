@@ -1,6 +1,6 @@
-﻿"""
-AegisVoice Automated Benchmark Suite Runner
-Smart India Hackathon 2026 - Problem Statement 104
+"""
+Phonon Automated Benchmark Suite Runner
+Team Phonon • Smart India Hackathon 2026 - Problem Statement 104
 
 Executes end-to-end model validation across authentic human speech
 and synthetic voice clone benchmarks, verifying:
@@ -37,7 +37,8 @@ def run_test_suite(target_dir: Path = None):
     fake_files = sorted(fake_dir.glob("*.wav"))
 
     print("=" * 80)
-    print("                     AEGISVOICE BENCHMARK SUITE VERIFICATION")
+    print("                     PHONON BENCHMARK SUITE VERIFICATION")
+    print(f" Team:          Phonon (SIH 2026 PS 104)")
     print(f" Target Folder: {target_dir.relative_to(REPO_ROOT)}")
     print(f" Real Files:    {len(real_files)} authentic human recordings")
     print(f" Fake Files:    {len(fake_files)} synthetic AI voice clones")

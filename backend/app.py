@@ -24,10 +24,10 @@ LOCAL_WEIGHTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mo
 
 if os.path.exists(LOCAL_WEIGHTS_DIR) and os.path.exists(os.path.join(LOCAL_WEIGHTS_DIR, "model.safetensors")) and os.path.getsize(os.path.join(LOCAL_WEIGHTS_DIR, "model.safetensors")) > 100_000_000:
     target_model_path = LOCAL_WEIGHTS_DIR
-    print(f"[AegisVoice] Loading audio classification model from local offline weights: {target_model_path}...")
+    print(f"[Phonon] Loading audio classification model from local offline weights: {target_model_path}...")
 else:
     target_model_path = MODEL_NAME
-    print(f"[AegisVoice] Loading audio classification model from HuggingFace cache: {target_model_path}...")
+    print(f"[Phonon] Loading audio classification model from HuggingFace cache: {target_model_path}...")
 
 try:
     model = AutoModelForAudioClassification.from_pretrained(target_model_path, local_files_only=True)
@@ -37,7 +37,7 @@ except Exception:
     feature_extractor = AutoFeatureExtractor.from_pretrained(target_model_path)
 
 model.eval()
-print("[AegisVoice] Neural model loaded into memory.")
+print("[Phonon] Neural model loaded into memory.")
 
 
 def extract_audio_windows_with_meta(y: np.ndarray, sr: int = 16000, window_sec: float = 4.0, max_windows: int = 8):

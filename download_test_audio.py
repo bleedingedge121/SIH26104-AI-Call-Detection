@@ -1,10 +1,10 @@
 """
-AegisVoice Benchmark Audio Downloader
-Smart India Hackathon 2026 - Problem Statement 104
+Phonon Benchmark Audio Downloader
+Team Phonon • Smart India Hackathon 2026 - Problem Statement 104
 
-Downloads and normalizes 10 modern speech benchmarks:
-- 5 Authentic Human Speech files (VoxCeleb) -> test_audio/real/
-- 5 Synthetic AI Clone / Vocoder files (WaveFake / HiFi-GAN) -> test_audio/fake/
+Downloads and normalizes modern speech benchmarks:
+- Authentic Human Speech files (VoxCeleb) -> test_audio/real/
+- Synthetic AI Clone / Vocoder files (WaveFake / HiFi-GAN) -> test_audio/fake/
 """
 
 import os
@@ -90,8 +90,8 @@ ALL_REAL = REAL_FILES_BATCH1 + REAL_FILES_BATCH2
 ALL_FAKE = FAKE_FILES_BATCH1 + FAKE_FILES_BATCH2
 
 print("================================================================")
-print("  AEGISVOICE BENCHMARK AUDIO DOWNLOADER")
-print(f"  Downloading {len(ALL_REAL)} Real (VoxCeleb) & {len(ALL_FAKE)} Fake (Neural Vocoder) Files")
+print("  PHONON BENCHMARK AUDIO DOWNLOADER")
+print(f"  Team Phonon • Downloading {len(ALL_REAL)} Real (VoxCeleb) & {len(ALL_FAKE)} Fake Files")
 print("================================================================\n")
 
 # 1. Process REAL files

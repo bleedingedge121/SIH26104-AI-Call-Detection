@@ -1,5 +1,6 @@
 """
-Automated Test Suite for AegisVoice API & Inference Pipeline.
+Automated Test Suite for Phonon API & Inference Pipeline.
+Team Phonon • Smart India Hackathon 2026 - Problem Statement 104
 Verifies endpoints, discrimination between real vs fake audio,
 JSON response shape compatibility, and error handling.
 """
@@ -74,7 +75,7 @@ def test_invalid_file():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("RUNNING AUTOMATED TEST PIPELINE FOR AEGISVOICE")
+    print("RUNNING AUTOMATED TEST PIPELINE FOR PHONON (TEAM PHONON)")
     print("=" * 60)
     try:
         test_health()

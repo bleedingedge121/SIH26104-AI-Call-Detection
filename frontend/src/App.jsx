@@ -69,7 +69,9 @@ export default function App() {
   const exportForensicReport = () => {
     if (!result) return;
     const reportData = {
-      system: 'AegisVoice AI - Biometric Anti-Spoofing Operations Center',
+      system: 'Phonon AI - Biometric Anti-Spoofing Operations Center',
+      team: 'Phonon',
+      hackathon: 'Smart India Hackathon 2026 - Problem Statement 104',
       version: '2.4.0-production',
       timestamp: new Date().toISOString(),
       file_name: result.filename,
@@ -90,7 +92,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `AegisVoice_Forensic_Audit_${result.filename.replace(/\.[^/.]+$/, '')}.json`;
+    link.download = `Phonon_Forensic_Audit_${result.filename.replace(/\.[^/.]+$/, '')}.json`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -248,12 +250,12 @@ export default function App() {
           </div>
           <div>
             <div style={styles.brandTitleRow}>
-              <span style={styles.brandTitle}>AEGISVOICE</span>
+              <span style={styles.brandTitle}>PHONON</span>
               <span style={styles.brandDivider}>|</span>
               <span style={styles.brandSubtitle}>Voice Fraud & Call Deepfake Detection Console</span>
             </div>
             <div style={styles.brandMeta}>
-              Smart India Hackathon 2026 • Problem Statement 104 • Wav2Vec2 + Spectral Analysis
+              Smart India Hackathon 2026 • Problem Statement 104 • Team Phonon • Wav2Vec2 + Spectral Analysis
             </div>
           </div>
         </div>
@@ -743,6 +745,7 @@ export default function App() {
 
               {/* Audit Footer */}
               <div style={styles.auditBar}>
+                <span>TEAM: <code>Phonon</code></span>
                 <span>FILE: <code>{result.filename}</code></span>
                 <span>MODEL: <code>Wav2Vec2 Fine-Tuned</code></span>
                 <span>STATUS: <code>200 OK</code></span>

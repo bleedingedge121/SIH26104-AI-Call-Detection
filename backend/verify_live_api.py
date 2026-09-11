@@ -1,5 +1,6 @@
 """
-AegisVoice Live Backend API Verification Script.
+Phonon Live Backend API Verification Script.
+Team Phonon • Smart India Hackathon 2026 - Problem Statement 104
 Tests authentic speech and synthetic voice clones against http://127.0.0.1:8000/score.
 Automatically tests repo-bundled benchmark samples and detects external datasets if present.
 """

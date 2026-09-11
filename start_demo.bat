@@ -2,8 +2,8 @@
 setlocal enabledelayedexpansion
 
 echo ========================================================
-echo   AegisVoice - Voice Deepfake & Call Defense Console
-echo   Smart India Hackathon 2026 - Problem Statement 104
+echo   Phonon - Voice Deepfake & Call Defense Console
+echo   Team Phonon • Smart India Hackathon 2026 • PS 104
 echo ========================================================
 
 :: 1. Check Python Virtual Environment
@@ -32,17 +32,17 @@ if not exist "frontend\node_modules" (
 
 echo.
 echo [1/2] Starting Backend API (FastAPI + Wav2Vec2 Pipeline)...
-start "AegisVoice Backend API" cmd /k "cd backend && .\venv\Scripts\activate && uvicorn app:app --host 127.0.0.1 --port 8000 --reload"
+start "Phonon Backend API" cmd /k "cd backend && .\venv\Scripts\activate && uvicorn app:app --host 127.0.0.1 --port 8000 --reload"
 
 echo [INFO] Waiting for backend API to initialize...
 timeout /t 4 /nobreak >nul
 
 echo [2/2] Starting Frontend Dashboard (Vite + React)...
-start "AegisVoice Frontend Dashboard" cmd /k "cd frontend && npm run dev"
+start "Phonon Frontend Dashboard" cmd /k "cd frontend && npm run dev"
 
 echo.
 echo ========================================================
-echo   AegisVoice is RUNNING!
+echo   Phonon is RUNNING!
 echo   Frontend Dashboard: http://localhost:5173
 echo   Backend Swagger UI: http://127.0.0.1:8000/docs
 echo ========================================================

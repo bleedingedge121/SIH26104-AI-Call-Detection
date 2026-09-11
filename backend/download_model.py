@@ -13,7 +13,7 @@ FILES = [
 
 BASE_URL = "https://huggingface.co/MelodyMachine/Deepfake-audio-detection-V2/resolve/main"
 
-print(f"[AegisVoice] Downloading model weights directly to: {MODEL_DIR}")
+print(f"[Phonon] Downloading model weights directly to: {MODEL_DIR}")
 
 for filename in FILES:
     target_path = os.path.join(MODEL_DIR, filename)
@@ -45,4 +45,4 @@ for filename in FILES:
                     print(f"\r    {filename}: {mb_down:.1f}/{mb_total:.1f} MB ({percent:.1f}%)", end="", flush=True)
     print(f"\n -> Successfully saved {filename} ({downloaded:,} bytes).")
 
-print("[AegisVoice] All model files downloaded and verified!")
+print("[Phonon] All model files downloaded and verified!")

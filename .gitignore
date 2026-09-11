@@ -130,6 +130,11 @@ target_length
 *.pt
 *.bin
 *.onnx
+*.safetensors
+backend/models/weights/
+test_audio/
+*CONFIDENTIAL*
+*TEAM_GUIDE*
 
 # Audio samples (large files)
 *.wav

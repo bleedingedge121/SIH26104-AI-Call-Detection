@@ -146,14 +146,23 @@ python test_api.py
 ```
 *Validates `/health`, `/` root metadata, real audio ingestion, fake audio detection, and corrupt file rejection.*
 
-### B. Live Benchmark Dataset Verification
+### B. Automated 20-Benchmark Verification Suite
+To test all 20 authentic and synthetic voice benchmarks with full acoustic telemetry and pass/fail verdicts:
 ```bash
-cd backend
-python verify_live_api.py
-```
-*Executes full-spectrum HTTP multipart tests against the live API across all bundled benchmark files (and external test datasets if present on the machine), outputting a complete accuracy report.*
+# Test all 20 benchmarks (10 real + 10 fake)
+python test_suite.py
 
-### C. Standalone CLI Inference
+# Or test specifically the 10 Batch-2 benchmarks
+python test_suite.py --new
+```
+
+### C. Benchmark Audio Downloader
+To download and normalize the verified modern benchmark files (VoxCeleb + WaveFake neural vocoders):
+```bash
+python download_test_audio.py
+```
+
+### D. Standalone CLI Inference
 You can analyze any audio file directly from the terminal without running the browser:
 ```bash
 cd backend

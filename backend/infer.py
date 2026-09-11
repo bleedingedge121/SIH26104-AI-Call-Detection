@@ -75,13 +75,21 @@ def predict_voice_spoof(audio_file_path: str):
         file_bytes = f.read()
     audio_hash = hashlib.sha256(file_bytes).hexdigest()
 
-    print(f"Loading deepfake classification model: {MODEL_NAME}...")
+    LOCAL_WEIGHTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "weights", "Deepfake-audio-detection-V2")
+
+    if os.path.exists(LOCAL_WEIGHTS_DIR) and os.path.exists(os.path.join(LOCAL_WEIGHTS_DIR, "model.safetensors")) and os.path.getsize(os.path.join(LOCAL_WEIGHTS_DIR, "model.safetensors")) > 100_000_000:
+        target_model_path = LOCAL_WEIGHTS_DIR
+        print(f"Loading deepfake classification model from local offline weights: {target_model_path}...")
+    else:
+        target_model_path = MODEL_NAME
+        print(f"Loading deepfake classification model from HuggingFace cache: {target_model_path}...")
+
     try:
-        model = AutoModelForAudioClassification.from_pretrained(MODEL_NAME, local_files_only=True)
-        feature_extractor = AutoFeatureExtractor.from_pretrained(MODEL_NAME, local_files_only=True)
+        model = AutoModelForAudioClassification.from_pretrained(target_model_path, local_files_only=True)
+        feature_extractor = AutoFeatureExtractor.from_pretrained(target_model_path, local_files_only=True)
     except Exception:
-        model = AutoModelForAudioClassification.from_pretrained(MODEL_NAME)
-        feature_extractor = AutoFeatureExtractor.from_pretrained(MODEL_NAME)
+        model = AutoModelForAudioClassification.from_pretrained(target_model_path)
+        feature_extractor = AutoFeatureExtractor.from_pretrained(target_model_path)
 
     model.eval()
 

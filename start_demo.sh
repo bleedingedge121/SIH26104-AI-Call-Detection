@@ -2,8 +2,8 @@
 set -e
 
 echo "========================================================"
-echo "  AegisVoice - Voice Deepfake & Call Defense Console"
-echo "  Smart India Hackathon 2026 - Problem Statement 104"
+echo "  Phonon - Voice Deepfake & Call Defense Console"
+echo "  Team Phonon • Smart India Hackathon 2026 • PS 104"
 echo "========================================================"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -42,7 +42,7 @@ FRONTEND_PID=$!
 
 echo ""
 echo "========================================================"
-echo "  AegisVoice is RUNNING!"
+echo "  Phonon is RUNNING!"
 echo "  Frontend Dashboard: http://localhost:5173"
 echo "  Backend Swagger UI: http://127.0.0.1:8000/docs"
 echo "========================================================"

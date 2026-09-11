@@ -1,5 +1,6 @@
 """
-AegisVoice Standalone CLI Inference Utility.
+Phonon Standalone CLI Inference Utility.
+Team Phonon • Smart India Hackathon 2026 - Problem Statement 104
 Uses pretrained HuggingFace wav2vec2 model "MelodyMachine/Deepfake-audio-detection-V2"
 for real-time speech deepfake detection with temporal localization.
 """
@@ -159,7 +160,7 @@ def predict_voice_spoof(audio_file_path: str):
     recommendation = "Allow transaction" if status == "SAFE" else "Require Secondary Verification"
 
     print("\n" + "=" * 65)
-    print("                    AEGISVOICE INFERENCE REPORT")
+    print("                      PHONON INFERENCE REPORT")
     print("=" * 65)
     print(f" Audio File:          {os.path.basename(audio_file_path)}")
     print(f" SHA-256 Hash:        {audio_hash[:32]}...")

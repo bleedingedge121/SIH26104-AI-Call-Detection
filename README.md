@@ -1,10 +1,10 @@
 # SIH26104-AI-Call-Detection
 
 > **Smart India Hackathon 2026 • Problem Statement 104**  
-> **Advanced Neural & Spectral Deepfake Detection System**  
-> **AegisVoice AI — Biometric Anti-Spoofing & Call Defense Console**
+> **Team Phonon • Advanced Neural & Spectral Deepfake Detection System**  
+> **Phonon — Biometric Anti-Spoofing & Call Defense Console**
 
-A full-stack, real-time voice anti-spoofing and deepfake call defense system. AegisVoice pairs a **fine-tuned Wav2Vec2 neural speech classification pipeline** with **multi-window temporal scanning** and **signal-level acoustic telemetry (MFCC & Spectral Centroid Variance)**, connected to an industrial cybersecurity console built with **React + Vite**.
+A full-stack, real-time voice anti-spoofing and deepfake call defense system. Phonon pairs a **fine-tuned Wav2Vec2 neural speech classification pipeline** with **multi-window temporal scanning** and **signal-level acoustic telemetry (MFCC & Spectral Centroid Variance)**, connected to an industrial cybersecurity console built with **React + Vite**.
 
 ---
 
@@ -64,7 +64,7 @@ SIH26104-AI-Call-Detection/
     │       ├── sample_real.wav         # Authentic human voice slice
     │       └── sample_spoof.wav        # Cloned deepfake audio slice
     └── src/
-        ├── App.jsx                     # AegisVoice Security Operations Console
+        ├── App.jsx                     # Phonon Security Operations Console
         ├── main.jsx                    # React entry point
         └── index.css                   # Industrial dark cybersecurity theme
 ```
@@ -73,7 +73,7 @@ SIH26104-AI-Call-Detection/
 
 ## 🔬 Core Detection Architecture
 
-AegisVoice employs an enterprise-grade, multi-layered defense pipeline engineered specifically for live call defense and voice spoofing prevention:
+Phonon employs an enterprise-grade, multi-layered defense pipeline engineered specifically for live call defense and voice spoofing prevention:
 
 1. **Fine-Tuned Wav2Vec2 Neural Backbone**:
    - Model: `MelodyMachine/Deepfake-audio-detection-V2` (~94.6M parameters).
@@ -83,8 +83,8 @@ AegisVoice employs an enterprise-grade, multi-layered defense pipeline engineere
 
 2. **Multi-Window Temporal Threat Scanning**:
    - Scammers frequently attempt anti-forensic evasion by speaking naturally during call initialization before activating synthetic clones for fraudulent instructions.
-   - AegisVoice extracts up to 8 overlapping temporal windows across the call duration, tracking exact start and end timestamps.
-   - If any window exhibits severe synthetic probability ($\ge 85\%$), AegisVoice escalates the call threat status to **CRITICAL**, preventing evasive hybrid calls.
+   - Phonon extracts up to 8 overlapping temporal windows across the call duration, tracking exact start and end timestamps.
+   - If any window exhibits severe synthetic probability ($\ge 85\%$), Phonon escalates the call threat status to **CRITICAL**, preventing evasive hybrid calls.
 
 3. **Auxiliary Acoustic Spectral Explainability**:
    - Computes multi-spectral acoustic telemetry to provide forensic analysts with explainable physical signals:
@@ -137,7 +137,7 @@ npm run dev
 
 ## 🧪 Verification & Benchmark Testing
 
-AegisVoice includes comprehensive automated test suites to ensure 100% reproducible results across any environment:
+Phonon includes comprehensive automated test suites to ensure 100% reproducible results across any environment:
 
 ### A. Automated Integration Tests
 ```bash

@@ -5,9 +5,11 @@ JSON response shape compatibility, and error handling.
 """
 
 import sys
+from pathlib import Path
 import requests
 
 BASE_URL = "http://127.0.0.1:8000"
+BACKEND_DIR = Path(__file__).resolve().parent
 
 
 def test_health():
@@ -31,7 +33,8 @@ def test_root():
 
 def test_score_sample_real():
     print("[TEST 3] Testing POST /score with real audio sample (sample2.wav / real voice)...")
-    with open("sample2.wav", "rb") as f:
+    sample_path = BACKEND_DIR / "sample2.wav"
+    with open(sample_path, "rb") as f:
         files = {"file": ("sample2.wav", f, "audio/wav")}
         resp = requests.post(f"{BASE_URL}/score", files=files)
     assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
@@ -48,7 +51,8 @@ def test_score_sample_real():
 
 def test_score_sample_fake():
     print("[TEST 4] Testing POST /score with fake audio sample (sample.wav / synthetic)...")
-    with open("sample.wav", "rb") as f:
+    sample_path = BACKEND_DIR / "sample.wav"
+    with open(sample_path, "rb") as f:
         files = {"file": ("sample.wav", f, "audio/wav")}
         resp = requests.post(f"{BASE_URL}/score", files=files)
     assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
